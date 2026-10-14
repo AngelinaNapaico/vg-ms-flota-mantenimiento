@@ -93,3 +93,7 @@ Una vez levantado el servicio, accede a:
 | `PATCH`| `/api/flota-mantenimiento/ordenes/{id}/control-calidad` | Pasar a control de calidad y pruebas técnicas | WRITE_ROLES |
 | `POST` | `/api/flota-mantenimiento/ordenes/{id}/alta-operativa` | Emitir alta técnica y habilitar vehículo a `DISPONIBLE` | WRITE_ROLES |
 | `PATCH`| `/api/flota-mantenimiento/ordenes/{id}/cancelar` | Cancelar orden y rehabilitar vehículo | WRITE_ROLES |
+
+## Calidad y pruebas
+
+La integración de Jenkins, Slack y SonarQube, las pruebas Selenium, la guía de carga JMeter y las evidencias requeridas están descritas en [CALIDAD_Y_PRUEBAS.md](./CALIDAD_Y_PRUEBAS.md). El plan JMeter y los escenarios Verde/Amarillo/Rojo están en [load-tests/](./load-tests/).
