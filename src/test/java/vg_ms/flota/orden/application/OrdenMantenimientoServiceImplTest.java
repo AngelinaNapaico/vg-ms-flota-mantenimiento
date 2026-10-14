@@ -10,7 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import vg_ms.flota.orden.application.port.RecursoOperativoPort;
-import vg_ms.flota.orden.application.service.OrdenMantenimientoAppService;
+import vg_ms.flota.orden.application.OrdenMantenimientoServiceImpl;
 import vg_ms.flota.orden.domain.aggregate.OrdenMantenimiento;
 import vg_ms.flota.orden.domain.repository.OrdenMantenimientoRepository;
 import vg_ms.flota.orden.domain.vo.*;
@@ -22,7 +22,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class OrdenMantenimientoAppServiceTest {
+class OrdenMantenimientoServiceImplTest {
 
     @Mock
     private OrdenMantenimientoRepository ordenRepository;
@@ -31,7 +31,7 @@ class OrdenMantenimientoAppServiceTest {
     private RecursoOperativoPort recursoOperativoPort;
 
     @InjectMocks
-    private OrdenMantenimientoAppService appService;
+    private OrdenMantenimientoServiceImpl appService;
 
     private CrearOrdenRequest crearRequest;
 

@@ -1,4 +1,4 @@
-package vg_ms.flota.orden.application.service;
+package vg_ms.flota.orden.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +20,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class OrdenMantenimientoAppService {
+public class OrdenMantenimientoServiceImpl implements OrdenMantenimientoService {
 
     private final OrdenMantenimientoRepository ordenRepository;
     private final RecursoOperativoPort recursoOperativoPort;
@@ -30,6 +30,7 @@ public class OrdenMantenimientoAppService {
     /**
      * Caso de uso transaccional: Apertura de orden de mantenimiento e inhabilitación del vehículo
      */
+    @Override
     public Mono<OrdenMantenimientoResponse> crearOrden(CrearOrdenRequest request, String token, String reportadoPorDni) {
         log.info("Iniciando creación de orden de mantenimiento para recurso: {}", request.getRecursoId());
 
@@ -73,6 +74,7 @@ public class OrdenMantenimientoAppService {
     /**
      * Asignación de taller mecánico y presupuesto inicial
      */
+    @Override
     public Mono<OrdenMantenimientoResponse> asignarTaller(String id, AsignarTallerRequest request) {
         return findDomainById(id)
                 .flatMap(orden -> {
@@ -95,6 +97,7 @@ public class OrdenMantenimientoAppService {
     /**
      * Pasa la orden al estado EN_TALLER
      */
+    @Override
     public Mono<OrdenMantenimientoResponse> iniciarReparacion(String id) {
         return findDomainById(id)
                 .flatMap(orden -> {
@@ -107,6 +110,7 @@ public class OrdenMantenimientoAppService {
     /**
      * Pasa la orden al estado CONTROL_CALIDAD
      */
+    @Override
     public Mono<OrdenMantenimientoResponse> pasarAControlCalidad(String id) {
         return findDomainById(id)
                 .flatMap(orden -> {
@@ -119,6 +123,7 @@ public class OrdenMantenimientoAppService {
     /**
      * Caso de uso transaccional: Emisión de alta técnica, finalización de orden y retorno a DISPONIBLE en vg-ms-recursos
      */
+    @Override
     public Mono<OrdenMantenimientoResponse> emitirAltaOperativa(
             String id,
             AltaOperativaRequest request,
@@ -168,6 +173,7 @@ public class OrdenMantenimientoAppService {
     /**
      * Cancelar orden y rehabilitar el recurso a DISPONIBLE
      */
+    @Override
     public Mono<OrdenMantenimientoResponse> cancelarOrden(String id, CancelarOrdenRequest request, String token) {
         return findDomainById(id)
                 .flatMap(orden -> {
@@ -182,28 +188,34 @@ public class OrdenMantenimientoAppService {
 
     // ─── Consultas ──────────────────────────────────────────────────────────
 
+    @Override
     public Mono<OrdenMantenimientoResponse> obtenerPorId(String id) {
         return findDomainById(id).map(OrdenMantenimientoResponse::fromDomain);
     }
 
+    @Override
     public Mono<OrdenMantenimientoResponse> obtenerPorCodigo(String codigoOrden) {
         return ordenRepository.findByCodigoOrden(codigoOrden)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Orden con código " + codigoOrden + " no encontrada")))
                 .map(OrdenMantenimientoResponse::fromDomain);
     }
 
+    @Override
     public Flux<OrdenMantenimientoResponse> listarTodas() {
         return ordenRepository.findAll().map(OrdenMantenimientoResponse::fromDomain);
     }
 
+    @Override
     public Flux<OrdenMantenimientoResponse> listarPorRecurso(String recursoId) {
         return ordenRepository.findByRecursoId(recursoId).map(OrdenMantenimientoResponse::fromDomain);
     }
 
+    @Override
     public Flux<OrdenMantenimientoResponse> listarPorEntidad(String entidadId) {
         return ordenRepository.findByEntidadId(entidadId).map(OrdenMantenimientoResponse::fromDomain);
     }
 
+    @Override
     public Flux<OrdenMantenimientoResponse> listarPorEstado(EstadoOrden estado) {
         return ordenRepository.findByEstadoOrden(estado).map(OrdenMantenimientoResponse::fromDomain);
     }
