@@ -33,7 +33,8 @@ vg_ms.flota
 │   │   └── repository         # Output Port (OrdenMantenimientoRepository - interfaz pura)
 │   ├── application
 │   │   ├── port               # Output Ports externos (RecursoOperativoPort)
-│   │   └── service            # Casos de uso orquestados de forma reactiva (Mono/Flux)
+│   │   ├── OrdenMantenimientoService       # Input Port de los casos de uso
+│   │   └── OrdenMantenimientoServiceImpl  # Implementación reactiva (Mono/Flux)
 │   ├── infrastructure
 │   │   ├── persistence        # Documento MongoDB, SpringDataReactiveRepository, Mapper y Adaptador Mongo
 │   │   └── client             # Adaptador WebClient hacia vg-ms-recursos inyectando Bearer JWT
@@ -45,6 +46,8 @@ vg_ms.flota
     ├── exception              # DomainException, GlobalExceptionHandler estándar
     └── security               # RoleConstants, JwtUtils, JwtAuthenticationFilter
 ```
+
+El controlador depende del puerto `OrdenMantenimientoService`; la implementación de los casos de uso y los adaptadores de infraestructura pueden cambiarse sin acoplar la interfaz REST a sus detalles.
 
 ---
 

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import vg_ms.flota.orden.application.service.OrdenMantenimientoAppService;
+import vg_ms.flota.orden.application.OrdenMantenimientoService;
 import vg_ms.flota.orden.domain.vo.EstadoOrden;
 import vg_ms.flota.orden.interfaces.dto.*;
 import vg_ms.flota.shared.security.RoleConstants;
@@ -26,7 +26,7 @@ import vg_ms.flota.shared.security.SecurityUtils;
 @Tag(name = "Órdenes de Mantenimiento de Flota", description = "Gestión transaccional del ciclo de vida y siniestros de vehículos de emergencia")
 public class OrdenMantenimientoController {
 
-    private final OrdenMantenimientoAppService appService;
+    private final OrdenMantenimientoService appService;
 
     // ─── Consultas ──────────────────────────────────────────────────────────
 
