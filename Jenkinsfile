@@ -1,3 +1,4 @@
+```groovy
 pipeline {
     agent any
 
@@ -60,9 +61,9 @@ pipeline {
                 withSonarQubeEnv("${SONARQUBE_SERVER}") {
                     script {
                         if (isUnix()) {
-                            sh './mvnw --batch-mode sonar:sonar'
+                            sh './mvnw --batch-mode org.sonarsource.scanner.maven:sonar-maven-plugin:5.1.0.4751:sonar'
                         } else {
-                            bat 'mvnw.cmd --batch-mode sonar:sonar'
+                            bat 'mvnw.cmd --batch-mode org.sonarsource.scanner.maven:sonar-maven-plugin:5.1.0.4751:sonar'
                         }
                     }
                 }
@@ -71,7 +72,6 @@ pipeline {
     }
 
     post {
-
         success {
             echo 'Pipeline ejecutado correctamente.'
 
@@ -97,3 +97,4 @@ pipeline {
         }
     }
 }
+```
