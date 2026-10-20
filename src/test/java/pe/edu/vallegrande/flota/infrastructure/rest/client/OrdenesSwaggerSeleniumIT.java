@@ -1,4 +1,4 @@
-package vg_ms.flota.orden.interfaces.rest;
+package pe.edu.vallegrande.flota.infrastructure.rest.client;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

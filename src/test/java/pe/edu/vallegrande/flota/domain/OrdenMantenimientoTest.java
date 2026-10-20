@@ -1,10 +1,14 @@
-package vg_ms.flota.orden.domain;
+package pe.edu.vallegrande.flota.domain;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import vg_ms.flota.orden.domain.aggregate.OrdenMantenimiento;
-import vg_ms.flota.orden.domain.vo.*;
-import vg_ms.flota.shared.exception.DomainException;
+import pe.edu.vallegrande.flota.domain.enums.EstadoOrden;
+import pe.edu.vallegrande.flota.domain.enums.PrioridadOrden;
+import pe.edu.vallegrande.flota.domain.enums.TipoMantenimiento;
+import pe.edu.vallegrande.flota.domain.exception.DomainException;
+import pe.edu.vallegrande.flota.domain.models.DetalleTaller;
+import pe.edu.vallegrande.flota.domain.models.InformeAltaTecnica;
+import pe.edu.vallegrande.flota.domain.models.OrdenMantenimiento;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
