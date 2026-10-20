@@ -1,4 +1,4 @@
-package vg_ms.flota.shared.config;
+package pe.edu.vallegrande.flota.infrastructure.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Configuración de seguridad reactiva y conversión de roles Keycloak/DualJWT.
+ */
 @Configuration
 @EnableWebFluxSecurity
 @EnableReactiveMethodSecurity
@@ -30,7 +33,6 @@ public class SecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(org.springframework.security.config.Customizer.withDefaults())
                 .authorizeExchange(exchanges -> exchanges
-                        // Endpoints públicos (Swagger, OpenAPI, Actuator)
                         .pathMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
@@ -39,9 +41,7 @@ public class SecurityConfig {
                                 "/actuator/health",
                                 "/actuator/info"
                         ).permitAll()
-                        // Endpoints internos llamados entre microservicios
                         .pathMatchers("/internal/**").permitAll()
-                        // Todo lo demás requiere autenticación; el rol específico lo define @PreAuthorize
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
@@ -52,48 +52,35 @@ public class SecurityConfig {
                 .build();
     }
 
-    /**
-     * Extrae y mapea los roles tanto de tokens emitidos por Keycloak como por vg-ms-auth.
-     */
     @Bean
     public Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
             List<String> roles = new ArrayList<>();
 
-            // 1. Claim directo "roles" (usado en realm PRS o vg-ms-auth)
-            List<String> flatRoles = jwt.getClaimAsStringList("roles");
-            if (flatRoles != null) {
-                roles.addAll(flatRoles);
-            }
-
-            // 2. Roles de Keycloak a nivel de Realm: realm_access.roles
+            // 1. Roles estándar de realm_access de Keycloak
             Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-            if (realmAccess != null && realmAccess.get("roles") instanceof List<?> realmRoles) {
-                realmRoles.stream()
-                        .map(Object::toString)
-                        .forEach(roles::add);
+            if (realmAccess != null && realmAccess.containsKey("roles")) {
+                Object r = realmAccess.get("roles");
+                if (r instanceof List<?> list) {
+                    list.stream().filter(String.class::isInstance).map(String.class::cast).forEach(roles::add);
+                }
             }
 
-            // 3. Roles de clientes Keycloak: resource_access.*.roles
-            Map<String, Object> resourceAccess = jwt.getClaimAsMap("resource_access");
-            if (resourceAccess != null) {
-                resourceAccess.values().forEach(clientAccess -> {
-                    if (clientAccess instanceof Map<?, ?> clientMap
-                            && clientMap.get("roles") instanceof List<?> clientRoles) {
-                        clientRoles.stream()
-                                .map(Object::toString)
-                                .forEach(roles::add);
-                    }
-                });
+            // 2. Roles del claim "roles" o "authorities" (vg-ms-auth)
+            List<String> directRoles = jwt.getClaimAsStringList("roles");
+            if (directRoles != null) {
+                roles.addAll(directRoles);
+            }
+            List<String> authRoles = jwt.getClaimAsStringList("authorities");
+            if (authRoles != null) {
+                roles.addAll(authRoles);
             }
 
-            // Agrega prefijo ROLE_ requerido por hasRole / hasAnyRole
+            // 3. Mapeo a SimpleGrantedAuthority con prefijo ROLE_
             return roles.stream()
-                    .filter(r -> r != null && !r.isBlank())
                     .distinct()
-                    .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role.toUpperCase())
+                    .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
         });

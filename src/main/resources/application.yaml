@@ -41,5 +41,5 @@ springdoc:
 
 logging:
   level:
-    vg_ms.flota: DEBUG
+    pe.edu.vallegrande.flota: DEBUG
     org.springframework.data.mongodb: INFO

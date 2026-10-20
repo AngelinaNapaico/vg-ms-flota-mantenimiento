@@ -8,11 +8,11 @@
 		<version>3.4.1</version>
 		<relativePath/>
 	</parent>
-	<groupId>vg-ms</groupId>
-	<artifactId>flota-mantenimiento</artifactId>
+	<groupId>pe.edu.vallegrande</groupId>
+	<artifactId>vg-ms-flota-mantenimiento</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>vg-ms-flota-mantenimiento</name>
-	<description>Microservicio Transaccional de Gestión de Siniestros y Mantenimiento de Flota de Emergencia</description>
+	<description>Microservicio de Flota y Mantenimiento - Estándar PR241</description>
 
 	<properties>
 		<java.version>17</java.version>
