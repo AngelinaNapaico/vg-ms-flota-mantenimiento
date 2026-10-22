@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ServerWebExchange;
 import pe.edu.vallegrande.flota.application.services.OrdenMantenimientoService;
 import pe.edu.vallegrande.flota.domain.enums.EstadoOrden;
+import pe.edu.vallegrande.flota.domain.models.OrdenMantenimiento;
 import pe.edu.vallegrande.flota.infrastructure.dto.common.ResponseDto;
 import pe.edu.vallegrande.flota.infrastructure.dto.request.AltaOperativaRequest;
 import pe.edu.vallegrande.flota.infrastructure.dto.request.AsignarTallerRequest;
@@ -23,12 +24,14 @@ import pe.edu.vallegrande.flota.infrastructure.dto.response.OrdenMantenimientoRe
 import pe.edu.vallegrande.flota.infrastructure.mapper.OrdenMantenimientoMapper;
 import pe.edu.vallegrande.flota.infrastructure.security.RoleConstants;
 import pe.edu.vallegrande.flota.infrastructure.security.SecurityUtils;
+import pe.edu.vallegrande.flota.infrastructure.security.TenantScope;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
  * REST Controller reactivo para órdenes de mantenimiento de flota según estándar PR241.
  * Nombre de clase estandarizado con sufijo Rest (*Rest).
+ * Implementa seguridad multitenant restringida a la Entidad propietaria (o SUPER_ADMIN).
  */
 @Slf4j
 @RestController
@@ -41,9 +44,9 @@ public class OrdenMantenimientoRest {
 
     @GetMapping
     @PreAuthorize(RoleConstants.READ_ROLES)
-    @Operation(summary = "Listar todas las órdenes de mantenimiento")
+    @Operation(summary = "Listar todas las órdenes de mantenimiento según alcance de entidad")
     public Flux<OrdenMantenimientoResponse> getAll() {
-        return service.findAll()
+        return porAlcance()
                 .map(OrdenMantenimientoMapper::toResponse);
     }
 
@@ -53,7 +56,7 @@ public class OrdenMantenimientoRest {
     public Mono<ResponseDto<OrdenMantenimientoDetailResponse>> getById(
             @Parameter(description = "ID único de la orden")
             @PathVariable String id) {
-        return service.findById(id)
+        return visible(service.findById(id))
                 .map(OrdenMantenimientoMapper::toDetailResponse)
                 .map(ResponseDto::success)
                 .defaultIfEmpty(ResponseDto.error("Orden de mantenimiento no encontrada"));
@@ -65,7 +68,7 @@ public class OrdenMantenimientoRest {
     public Mono<ResponseDto<OrdenMantenimientoDetailResponse>> getByCodigo(
             @Parameter(description = "Código de la orden (ej: ORD-2026-XXXX)")
             @PathVariable String codigo) {
-        return service.findByCodigo(codigo)
+        return visible(service.findByCodigo(codigo))
                 .map(OrdenMantenimientoMapper::toDetailResponse)
                 .map(ResponseDto::success)
                 .defaultIfEmpty(ResponseDto.error("Orden no encontrada"));
@@ -77,7 +80,7 @@ public class OrdenMantenimientoRest {
     public Flux<OrdenMantenimientoResponse> getByRecurso(
             @Parameter(description = "ID del recurso operativo")
             @PathVariable String recursoId) {
-        return service.findByRecurso(recursoId)
+        return visibles(service.findByRecurso(recursoId))
                 .map(OrdenMantenimientoMapper::toResponse);
     }
 
@@ -87,8 +90,12 @@ public class OrdenMantenimientoRest {
     public Flux<OrdenMantenimientoResponse> getByEntidad(
             @Parameter(description = "ID de la entidad (comisaría, bomberos, hospital)")
             @PathVariable String entidadId) {
-        return service.findByEntidad(entidadId)
-                .map(OrdenMantenimientoMapper::toResponse);
+        return TenantScope.current().flatMapMany(scope -> {
+            if (scope.all() || (scope.entidadId() != null && scope.entidadId().equals(entidadId))) {
+                return service.findByEntidad(entidadId);
+            }
+            return Flux.empty();
+        }).map(OrdenMantenimientoMapper::toResponse);
     }
 
     @GetMapping("/estado/{estado}")
@@ -97,7 +104,7 @@ public class OrdenMantenimientoRest {
     public Flux<OrdenMantenimientoResponse> getByEstado(
             @Parameter(description = "Estado de la orden")
             @PathVariable EstadoOrden estado) {
-        return service.findByEstado(estado)
+        return visibles(service.findByEstado(estado))
                 .map(OrdenMantenimientoMapper::toResponse);
     }
 
@@ -110,10 +117,16 @@ public class OrdenMantenimientoRest {
             ServerWebExchange exchange) {
         String token = extractToken(exchange);
 
-        return SecurityUtils.getCurrentUsername()
-                .flatMap(dni -> service.create(request, token, dni))
-                .map(OrdenMantenimientoMapper::toDetailResponse)
-                .map(data -> ResponseDto.success(data, "Orden de mantenimiento registrada exitosamente"));
+        return TenantScope.current().flatMap(scope -> {
+            scope.requireWriter();
+            if (!scope.all() && scope.entidadId() != null) {
+                request.setEntidadId(scope.entidadId());
+            }
+            return SecurityUtils.getCurrentUsername()
+                    .flatMap(dni -> service.create(request, token, dni))
+                    .map(OrdenMantenimientoMapper::toDetailResponse)
+                    .map(data -> ResponseDto.success(data, "Orden de mantenimiento registrada exitosamente"));
+        });
     }
 
     @PatchMapping("/{id}/taller")
@@ -122,7 +135,8 @@ public class OrdenMantenimientoRest {
     public Mono<ResponseDto<OrdenMantenimientoDetailResponse>> asignarTaller(
             @PathVariable String id,
             @Valid @RequestBody AsignarTallerRequest request) {
-        return service.asignarTaller(id, request)
+        return propio(id)
+                .flatMap(scope -> service.asignarTaller(id, request))
                 .map(OrdenMantenimientoMapper::toDetailResponse)
                 .map(data -> ResponseDto.success(data, "Taller y presupuesto asignados exitosamente"));
     }
@@ -131,7 +145,8 @@ public class OrdenMantenimientoRest {
     @PreAuthorize(RoleConstants.WRITE_ROLES)
     @Operation(summary = "Marcar inicio de los trabajos mecánicos en taller (EN_TALLER)")
     public Mono<ResponseDto<OrdenMantenimientoDetailResponse>> iniciarReparacion(@PathVariable String id) {
-        return service.iniciarReparacion(id)
+        return propio(id)
+                .flatMap(scope -> service.iniciarReparacion(id))
                 .map(OrdenMantenimientoMapper::toDetailResponse)
                 .map(data -> ResponseDto.success(data, "Reparación iniciada en taller"));
     }
@@ -140,7 +155,8 @@ public class OrdenMantenimientoRest {
     @PreAuthorize(RoleConstants.WRITE_ROLES)
     @Operation(summary = "Pasar vehículo a pruebas técnicas y control de calidad")
     public Mono<ResponseDto<OrdenMantenimientoDetailResponse>> pasarAControlCalidad(@PathVariable String id) {
-        return service.pasarAControlCalidad(id)
+        return propio(id)
+                .flatMap(scope -> service.pasarAControlCalidad(id))
                 .map(OrdenMantenimientoMapper::toDetailResponse)
                 .map(data -> ResponseDto.success(data, "Vehículo en control de calidad y pruebas técnicas"));
     }
@@ -154,10 +170,10 @@ public class OrdenMantenimientoRest {
             ServerWebExchange exchange) {
         String token = extractToken(exchange);
 
-        return SecurityUtils.getCurrentUsername()
+        return propio(id).flatMap(scope -> SecurityUtils.getCurrentUsername()
                 .flatMap(dni -> service.emitirAltaOperativa(id, request, token, dni))
                 .map(OrdenMantenimientoMapper::toDetailResponse)
-                .map(data -> ResponseDto.success(data, "Alta técnica emitida exitosamente; recurso habilitado a DISPONIBLE"));
+                .map(data -> ResponseDto.success(data, "Alta técnica emitida exitosamente; recurso habilitado a DISPONIBLE")));
     }
 
     @PatchMapping("/{id}/cancelar")
@@ -169,9 +185,48 @@ public class OrdenMantenimientoRest {
             ServerWebExchange exchange) {
         String token = extractToken(exchange);
 
-        return service.cancelar(id, request, token)
+        return propio(id).flatMap(scope -> service.cancelar(id, request, token)
                 .map(OrdenMantenimientoMapper::toDetailResponse)
-                .map(data -> ResponseDto.success(data, "Orden de mantenimiento cancelada"));
+                .map(data -> ResponseDto.success(data, "Orden de mantenimiento cancelada")));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ALCANCE MULTITENANT (ENTIDAD / SUPER_ADMIN)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private Flux<OrdenMantenimiento> porAlcance() {
+        return TenantScope.current().flatMapMany(scope -> {
+            if (scope.all()) {
+                return service.findAll();
+            }
+            if (scope.entidadId() != null) {
+                return service.findByEntidad(scope.entidadId());
+            }
+            return Flux.empty();
+        });
+    }
+
+    private static Mono<OrdenMantenimiento> visible(Mono<OrdenMantenimiento> ordenMono) {
+        return TenantScope.current().flatMap(scope ->
+                ordenMono.filter(orden -> scope.canRead(orden.getEntidadId())));
+    }
+
+    private static Flux<OrdenMantenimiento> visibles(Flux<OrdenMantenimiento> ordenesFlux) {
+        return TenantScope.current().flatMapMany(scope ->
+                ordenesFlux.filter(orden -> scope.canRead(orden.getEntidadId())));
+    }
+
+    private Mono<TenantScope> propio(String id) {
+        return TenantScope.current().flatMap(scope -> {
+            scope.requireWriter();
+            if (scope.all()) {
+                return Mono.just(scope);
+            }
+            return service.findById(id)
+                    .filter(orden -> scope.canRead(orden.getEntidadId()))
+                    .switchIfEmpty(Mono.error(TenantScope.forbidden()))
+                    .thenReturn(scope);
+        });
     }
 
     private String extractToken(ServerWebExchange exchange) {
