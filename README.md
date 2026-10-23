@@ -21,7 +21,7 @@ Implementa una orquestación distribuida (patrón Saga / Coordinación inter-ser
 
 ---
 
-## 2. Arquitectura Hexagonal DDD (Estándar PR241)
+## 2. Arquitectura Hexagonal DDD (Estándar PR241 / AS241S6)
 
 Estructura de paquetes base `pe.edu.vallegrande.flota` alineada con `PRS241_standards`:
 
@@ -29,25 +29,26 @@ Estructura de paquetes base `pe.edu.vallegrande.flota` alineada con `PRS241_stan
 pe.edu.vallegrande.flota
 ├── FlotaMantenimientoApplication.java
 ├── domain/
-│   ├── enums/                      # EstadoOrden, TipoMantenimiento, PrioridadOrden
-│   ├── models/                     # OrdenMantenimiento, DetalleTaller, InformeAltaTecnica
-│   └── exception/                  # DomainException (reglas de negocio e invariantes)
+│   ├── model/                      # OrdenMantenimiento (Aggregate Root), DetalleTaller, InformeAltaTecnica
+│   ├── vo/                         # EstadoOrden, TipoMantenimiento, PrioridadOrden
+│   ├── exception/                  # DomainException (reglas de negocio e invariantes)
+│   └── port/
+│       ├── in/                     # OrdenMantenimientoUseCase (puerto de entrada)
+│       └── out/                    # OrdenMantenimientoRepositoryPort, RecursoClientPort (puertos de salida)
 ├── application/
-│   └── services/
-│       ├── OrdenMantenimientoService.java
-│       └── impl/OrdenMantenimientoServiceImpl.java
+│   ├── usecase/                    # OrdenMantenimientoUseCaseImpl
+│   └── dto/
+│       ├── common/                 # ResponseDto<T>, ErrorMessage, ValidationError
+│       ├── request/                # CreateOrdenMantenimientoRequest, AsignarTallerRequest...
+│       └── response/               # OrdenMantenimientoResponse, OrdenMantenimientoDetailResponse
 └── infrastructure/
-    ├── document/                   # BaseDocument (auditoría obligatoria), OrdenMantenimientoDocument
-    ├── dto/
-    │   ├── common/                 # ResponseDto<T>, ErrorMessage, ValidationError
-    │   ├── request/                # CreateOrdenMantenimientoRequest, AsignarTallerRequest...
-    │   └── response/               # OrdenMantenimientoResponse, OrdenMantenimientoDetailResponse
-    ├── repository/                 # OrdenMantenimientoRepository (ReactiveMongoRepository)
-    ├── mapper/                     # OrdenMantenimientoMapper
-    ├── rest/client/                # OrdenMantenimientoRest (convención estándar *Rest)
-    ├── client/external/            # RecursoOperativoClient (WebClient reactivo hacia vg-ms-recursos)
+    ├── adapter/
+    │   ├── in/rest/controller/     # OrdenMantenimientoRest (adaptador primario REST)
+    │   └── out/
+    │       ├── persistence/mongodb/# Adaptador secundario MongoDB, OrdenMantenimientoDocument, Mapper, Repo
+    │       └── client/recursos/    # RecursoClientAdapter (WebClient reactivo hacia vg-ms-recursos)
     ├── exception/                  # GlobalExceptionHandler, ValidationExceptionHandler
-    ├── security/                   # SecurityConfig, RoleConstants, SecurityUtils
+    ├── security/                   # SecurityConfig, RoleConstants, SecurityUtils, TenantScope
     └── config/                     # OpenApiConfig, WebClientConfig
 ```
 
@@ -57,27 +58,29 @@ pe.edu.vallegrande.flota
 
 | Rama Estándar | Requisito Principal | Implementación en este Microservicio |
 | :--- | :--- | :--- |
-| **ProjectArchitecture** | Arquitectura Hexagonal y convención de nombres | Paquete `pe.edu.vallegrande.flota`, controlador `OrdenMantenimientoRest`, dominio desacoplado de MongoDB |
+| **ProjectArchitecture** | Arquitectura Hexagonal pura y convención de nombres | Paquete `pe.edu.vallegrande.flota`, controlador `OrdenMantenimientoRest`, puertos in/out, dominio puro desacoplado de frameworks |
 | **DatabaseStorage** | Database per Service en MongoDB Atlas | Base de datos aislada `db_flota`, `retryWrites=true&w=majority`, `auto-index-creation=true`, auditoría `BaseDocument` (`createdAt`, `updatedAt`, `createdBy`, `updatedBy`, `status`) |
 | **Security** | Keycloak IAM y RBAC | OAuth2 Resource Server con JWKS Keycloak (Realm `PRS`), `@PreAuthorize` con `RoleConstants`, sin secretos en repo |
-| **Backend** | Buenas prácticas y resiliencia reactiva | Project Reactor (`Mono`/`Flux`) no bloqueante, inyección por constructor, DTOs de request/response, `.env.example`, pruebas unitarias y parametrizadas |
+| **Backend** | Buenas prácticas AS241S6 | Project Reactor (`Mono`/`Flux`) no bloqueante, inyección por constructor, DTOs de request/response, `.env.example`, pruebas unitarias y parametrizadas |
 
 ---
 
-## 4. Endpoints Principales (`/api/flota-mantenimiento/ordenes`)
+## 4. Endpoints Principales (`/api/v1/ordenes-mantenimiento` o `/api/flota-mantenimiento/ordenes`)
 
 | Método | Endpoint | Descripción | Roles Autorizados |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/flota-mantenimiento/ordenes` | Listar todas las órdenes de mantenimiento | READ_ROLES |
-| `GET` | `/api/flota-mantenimiento/ordenes/{id}` | Obtener orden por ID | READ_ROLES |
-| `GET` | `/api/flota-mantenimiento/ordenes/codigo/{codigo}` | Buscar orden por código (ej: `ORD-2026-XXXX`) | READ_ROLES |
-| `GET` | `/api/flota-mantenimiento/ordenes/recurso/{recursoId}` | Historial de taller de un vehículo específico | READ_ROLES |
-| `POST` | `/api/flota-mantenimiento/ordenes` | Crear orden y pasar vehículo a `EN_MANTENIMIENTO` | WRITE_ROLES |
-| `PATCH`| `/api/flota-mantenimiento/ordenes/{id}/taller` | Asignar taller mecánico y presupuesto estimado | WRITE_ROLES |
-| `PATCH`| `/api/flota-mantenimiento/ordenes/{id}/iniciar-reparacion` | Pasar orden al estado `EN_TALLER` | WRITE_ROLES |
-| `PATCH`| `/api/flota-mantenimiento/ordenes/{id}/control-calidad` | Pasar orden al estado `CONTROL_CALIDAD` | WRITE_ROLES |
-| `POST` | `/api/flota-mantenimiento/ordenes/{id}/alta-operativa` | Emitir alta técnica, finalizar orden y rehabilitar a `DISPONIBLE` | WRITE_ROLES |
-| `PATCH`| `/api/flota-mantenimiento/ordenes/{id}/cancelar` | Cancelar orden y rehabilitar vehículo | WRITE_ROLES |
+| `GET` | `/api/v1/ordenes-mantenimiento` | Listar todas las órdenes de mantenimiento | READ_ROLES |
+| `GET` | `/api/v1/ordenes-mantenimiento/{id}` | Obtener orden por ID | READ_ROLES |
+| `GET` | `/api/v1/ordenes-mantenimiento/codigo/{codigo}` | Buscar orden por código (ej: `ORD-2026-XXXX`) | READ_ROLES |
+| `GET` | `/api/v1/ordenes-mantenimiento/recurso/{recursoId}` | Historial de taller de un vehículo específico | READ_ROLES |
+| `GET` | `/api/v1/ordenes-mantenimiento/entidad/{entidadId}` | Listar órdenes por entidad | READ_ROLES |
+| `GET` | `/api/v1/ordenes-mantenimiento/estado/{estado}` | Listar órdenes filtradas por estado | READ_ROLES |
+| `POST` | `/api/v1/ordenes-mantenimiento` | Crear orden y pasar vehículo a `EN_MANTENIMIENTO` | WRITE_ROLES |
+| `PATCH`| `/api/v1/ordenes-mantenimiento/{id}/taller` | Asignar taller mecánico y presupuesto estimado | WRITE_ROLES |
+| `PATCH`| `/api/v1/ordenes-mantenimiento/{id}/iniciar-reparacion` | Pasar orden al estado `EN_TALLER` | WRITE_ROLES |
+| `PATCH`| `/api/v1/ordenes-mantenimiento/{id}/control-calidad` | Pasar orden al estado `CONTROL_CALIDAD` | WRITE_ROLES |
+| `POST` | `/api/v1/ordenes-mantenimiento/{id}/alta-operativa` | Emitir alta técnica, finalizar orden y rehabilitar a `DISPONIBLE` | WRITE_ROLES |
+| `PATCH`| `/api/v1/ordenes-mantenimiento/{id}/cancelar` | Cancelar orden y rehabilitar vehículo | WRITE_ROLES |
 
 ---
 

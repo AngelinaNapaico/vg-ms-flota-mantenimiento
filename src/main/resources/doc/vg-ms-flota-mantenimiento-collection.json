@@ -1,0 +1,468 @@
+{
+	"info": {
+		"_postman_id": "flota-mantenimiento-collection-prs241",
+		"name": "vg-ms-flota-mantenimiento",
+		"description": "Colección oficial estandarizada PR241 para el microservicio de Flota y Mantenimiento Vehicular.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "0. Autenticación",
+			"item": [
+				{
+					"name": "Obtener Token (Keycloak - Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.access_token) {",
+									"    pm.environment.set(\"token\", jsonData.access_token);",
+									"    console.log(\"Token guardado en variable de entorno: token\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "client_id",
+									"value": "prs-web",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "admin",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "Admin123!",
+									"type": "text"
+								},
+								{
+									"key": "grant_type",
+									"value": "password",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{keycloak_url}}/realms/PRS/protocol/openid-connect/token",
+							"host": [
+								"{{keycloak_url}}"
+							],
+							"path": [
+								"realms",
+								"PRS",
+								"protocol",
+								"openid-connect",
+								"token"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "OrdenMantenimientoRest",
+			"item": [
+				{
+					"name": "1. Registrar Orden de Mantenimiento",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success && jsonData.data) {",
+									"    pm.environment.set(\"order_id\", jsonData.data.id);",
+									"    pm.environment.set(\"order_code\", jsonData.data.codigoOrden);",
+									"    console.log(\"Order ID guardado: \" + jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"recursoId\": \"REC-001\",\n  \"recursoPlaca\": \"EUA-911\",\n  \"entidadId\": \"ENT-001\",\n  \"tipoMantenimiento\": \"CORRECTIVO\",\n  \"prioridad\": \"ALTA\",\n  \"motivoAveria\": \"Falla en sistema de frenos y recalentamiento de motor\",\n  \"kilometrajeReportado\": 85400,\n  \"observaciones\": \"Remolcado con grúa municipal\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/flota-mantenimiento/ordenes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"flota-mantenimiento",
+								"ordenes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Listar Órdenes por Alcance",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/flota-mantenimiento/ordenes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"flota-mantenimiento",
+								"ordenes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Obtener Orden por ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/flota-mantenimiento/ordenes/{{order_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"flota-mantenimiento",
+								"ordenes",
+								"{{order_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Obtener Orden por Código",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/flota-mantenimiento/ordenes/codigo/{{order_code}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"flota-mantenimiento",
+								"ordenes",
+								"codigo",
+								"{{order_code}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Listar por Historial de Recurso",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/flota-mantenimiento/ordenes/recurso/REC-001",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"flota-mantenimiento",
+								"ordenes",
+								"recurso",
+								"REC-001"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Listar por Entidad",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/flota-mantenimiento/ordenes/entidad/ENT-001",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"flota-mantenimiento",
+								"ordenes",
+								"entidad",
+								"ENT-001"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Listar por Estado",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/flota-mantenimiento/ordenes/estado/REGISTRADA",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"flota-mantenimiento",
+								"ordenes",
+								"estado",
+								"REGISTRADA"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8. Asignar Taller y Presupuesto",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombreTaller\": \"Taller Mecánico Central San Vicente\",\n  \"direccionTaller\": \"Av. Mariscal Benavides 450\",\n  \"diagnosticoInicial\": \"Fuga de líquido por retén de mordaza y manguera de frenos agrietada.\",\n  \"costoEstimado\": 1250.00,\n  \"mecanicoResponsable\": \"Carlos Mendoza\",\n  \"telefonoContacto\": \"987654321\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/flota-mantenimiento/ordenes/{{order_id}}/taller",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"flota-mantenimiento",
+								"ordenes",
+								"{{order_id}}",
+								"taller"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "9. Iniciar Reparación en Taller",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/flota-mantenimiento/ordenes/{{order_id}}/iniciar-reparacion",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"flota-mantenimiento",
+								"ordenes",
+								"{{order_id}}",
+								"iniciar-reparacion"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "10. Pasar a Control de Calidad",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/flota-mantenimiento/ordenes/{{order_id}}/control-calidad",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"flota-mantenimiento",
+								"ordenes",
+								"{{order_id}}",
+								"control-calidad"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "11. Emitir Alta Técnica Operativa",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"dictamenTecnico\": \"Vehículo probado en ruta; sistema de frenos y motor al 100% operativo.\",\n  \"pruebasRealizadas\": \"Prueba de frenado a 60km/h y chequeo de temperatura por 30 minutos.\",\n  \"kilometrajeSalida\": 85415,\n  \"costoFinal\": 1150.00,\n  \"observaciones\": \"Próximo mantenimiento preventivo programado a los 90,000 km.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/flota-mantenimiento/ordenes/{{order_id}}/alta-operativa",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"flota-mantenimiento",
+								"ordenes",
+								"{{order_id}}",
+								"alta-operativa"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "12. Cancelar Orden",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"motivoCancelacion\": \"Falsa alarma de avería reportada por error\",\n  \"observaciones\": \"El chofer verificó nivel y no requería ingreso a taller\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/flota-mantenimiento/ordenes/{{order_id}}/cancelar",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"flota-mantenimiento",
+								"ordenes",
+								"{{order_id}}",
+								"cancelar"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:9000",
+			"type": "string"
+		},
+		{
+			"key": "keycloak_url",
+			"value": "http://localhost:8090",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "order_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "order_code",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

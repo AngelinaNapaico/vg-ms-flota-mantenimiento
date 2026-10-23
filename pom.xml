@@ -8,7 +8,7 @@
 		<version>3.4.1</version>
 		<relativePath/>
 	</parent>
-	<groupId>pe.edu.vallegrande</groupId>
+	<groupId>pe.edu.vallegrande.caneteseguro</groupId>
 	<artifactId>vg-ms-flota-mantenimiento</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>vg-ms-flota-mantenimiento</name>
