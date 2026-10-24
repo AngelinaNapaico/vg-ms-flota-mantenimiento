@@ -14,12 +14,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Alcance multitenant del usuario autenticado (claims {@code mid}/{@code eid} del JWT).
- * Regla de negocio para Flota y Mantenimiento:
- * - SUPER_ADMIN ve y gestiona todas las órdenes y flotas.
- * - Con {@code eid} (Entidad): ve y gestiona exclusivamente las órdenes pertenecientes a su entidad.
- * - Usuarios sin {@code eid} (incluyendo solo municipalidad): no intervienen en el mantenimiento vehicular.
- * Copiado igual en cada micro (no hay librería compartida): mantener en sincronía.
+ * Multitenant scope of the authenticated user (JWT claims {@code mid}/{@code eid}).
+ * Business rule for Fleet and Maintenance:
+ * - SUPER_ADMIN/ADMIN has global view and management of all orders and fleets.
+ * - With {@code eid} (Entity): views and manages exclusively orders belonging to their entity.
+ * - Users without {@code eid} (including municipality-only): do not participate in fleet vehicle maintenance.
  */
 public record TenantScope(boolean all, String municipalidadId, String entidadId, Set<String> roles) {
 
@@ -27,7 +26,7 @@ public record TenantScope(boolean all, String municipalidadId, String entidadId,
         return ReactiveSecurityContextHolder.getContext()
                 .map(SecurityContext::getAuthentication)
                 .map(TenantScope::from)
-                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado")));
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User is not authenticated")));
     }
 
     public static TenantScope from(Authentication auth) {
@@ -47,8 +46,8 @@ public record TenantScope(boolean all, String municipalidadId, String entidadId,
     }
 
     /**
-     * Lectura de orden de mantenimiento perteneciente a {@code eid}.
-     * Solo SUPER_ADMIN o personal con el mismo {@code entidadId}.
+     * Read access for maintenance order belonging to {@code eid}.
+     * Only SUPER_ADMIN or staff belonging to the same {@code entidadId}.
      */
     public boolean canRead(String eid) {
         if (all) {
@@ -58,7 +57,7 @@ public record TenantScope(boolean all, String municipalidadId, String entidadId,
     }
 
     /**
-     * Escritura / Gestión de órdenes: solo personal de entidad (o SUPER_ADMIN), excepto rol ANALISTA.
+     * Write/Management of orders: only entity personnel (or SUPER_ADMIN), except ANALISTA role.
      */
     public boolean canWrite() {
         return all || (entidadId != null && !hasRole("ANALISTA"));
@@ -72,7 +71,7 @@ public record TenantScope(boolean all, String municipalidadId, String entidadId,
     }
 
     public static ResponseStatusException forbidden() {
-        return new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso restringido: La flota vehicular solo es gestionada por la entidad perteneciente");
+        return new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: Fleet vehicles are only managed by the owning entity");
     }
 
     private static String text(Object value) {

@@ -19,7 +19,7 @@ class MaintenanceOrdersSwaggerSeleniumIT {
     private WebDriverWait wait;
 
     @BeforeEach
-    void abrirSwagger() {
+    void openSwaggerUi() {
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--headless=new", "--no-sandbox", "--disable-dev-shm-usage");
         driver = new ChromeDriver(options);
@@ -32,21 +32,21 @@ class MaintenanceOrdersSwaggerSeleniumIT {
     }
 
     @AfterEach
-    void cerrarNavegador() {
+    void closeBrowser() {
         if (driver != null) {
             driver.quit();
         }
     }
 
     @Test
-    void swaggerUiCargaLaDocumentacion() {
+    void shouldLoadSwaggerUiDocumentation() {
         wait.until(webDriver -> webDriver.findElement(By.cssSelector(".swagger-ui")).isDisplayed());
 
         assertTrue(driver.getTitle().contains("Swagger UI"));
     }
 
     @Test
-    void swaggerUiPublicaLosEndpointsDeOrdenes() {
+    void shouldExposeOrderEndpoints() {
         wait.until(webDriver -> webDriver.findElement(By.cssSelector(".swagger-ui")).isDisplayed());
         wait.until(webDriver -> webDriver.findElement(By.tagName("body"))
                 .getText().contains("/api/v1/maintenance-orders"));
