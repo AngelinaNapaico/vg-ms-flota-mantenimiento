@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: vg-ms-flota-mantenimiento
+    name: vg-ms-fleet-maintenance
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   data:
@@ -45,5 +45,5 @@ springdoc:
 
 logging:
   level:
-    pe.edu.vallegrande.caneteseguro.flota: DEBUG
+    pe.edu.vallegrande.caneteseguro.fleet: DEBUG
     org.springframework.data.mongodb: INFO

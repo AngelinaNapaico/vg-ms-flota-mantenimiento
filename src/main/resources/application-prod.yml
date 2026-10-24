@@ -2,7 +2,7 @@
 logging:
   level:
     root: WARN
-    pe.edu.vallegrande.caneteseguro.flota: INFO
+    pe.edu.vallegrande.caneteseguro.fleet: INFO
 
 management:
   endpoint:
