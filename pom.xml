@@ -9,10 +9,10 @@
 		<relativePath/>
 	</parent>
 	<groupId>pe.edu.vallegrande.caneteseguro</groupId>
-	<artifactId>vg-ms-flota-mantenimiento</artifactId>
+	<artifactId>vg-ms-fleet-maintenance</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>vg-ms-flota-mantenimiento</name>
-	<description>Microservicio de Flota y Mantenimiento - Estándar PR241</description>
+	<name>vg-ms-fleet-maintenance</name>
+	<description>Emergency fleet maintenance and claims management service for Cañete Seguro</description>
 
 	<properties>
 		<java.version>17</java.version>
