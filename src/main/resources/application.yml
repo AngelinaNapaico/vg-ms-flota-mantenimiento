@@ -10,7 +10,6 @@ spring:
     mongodb:
       database: ${MONGO_FLEET_DATABASE:db_fleet}
       uri: ${SPRING_DATA_MONGODB_URI}
-      ssl: true
       auto-index-creation: true
   security:
     oauth2:
