@@ -29,23 +29,52 @@ public final class MaintenanceOrderMapper {
 
         MaintenanceType type = null;
         if (document.getMaintenanceType() != null) {
-            try {
-                type = MaintenanceType.valueOf(document.getMaintenanceType());
-            } catch (IllegalArgumentException ignored) {}
+            String t = document.getMaintenanceType();
+            switch (t) {
+                case "PREVENTIVE" -> type = MaintenanceType.PREVENTIVO;
+                case "CORRECTIVE" -> type = MaintenanceType.CORRECTIVO;
+                case "CORRECTIVE_ACCIDENT" -> type = MaintenanceType.CORRECTIVO_ACCIDENTE;
+                case "REGULATORY_INSPECTION" -> type = MaintenanceType.INSPECCION_REGLAMENTARIA;
+                default -> {
+                    try {
+                        type = MaintenanceType.valueOf(t);
+                    } catch (IllegalArgumentException ignored) {}
+                }
+            }
         }
 
         OrderStatus status = null;
         if (document.getOrderStatus() != null) {
-            try {
-                status = OrderStatus.valueOf(document.getOrderStatus());
-            } catch (IllegalArgumentException ignored) {}
+            String s = document.getOrderStatus();
+            switch (s) {
+                case "REGISTERED" -> status = OrderStatus.REGISTRADA;
+                case "IN_DIAGNOSIS" -> status = OrderStatus.EN_DIAGNOSTICO;
+                case "IN_WORKSHOP" -> status = OrderStatus.EN_TALLER;
+                case "QUALITY_CONTROL" -> status = OrderStatus.EN_CONTROL_CALIDAD;
+                case "COMPLETED" -> status = OrderStatus.FINALIZADA;
+                case "CANCELLED" -> status = OrderStatus.CANCELADA;
+                default -> {
+                    try {
+                        status = OrderStatus.valueOf(s);
+                    } catch (IllegalArgumentException ignored) {}
+                }
+            }
         }
 
         OrderPriority priority = null;
         if (document.getPriority() != null) {
-            try {
-                priority = OrderPriority.valueOf(document.getPriority());
-            } catch (IllegalArgumentException ignored) {}
+            String p = document.getPriority();
+            switch (p) {
+                case "LOW" -> priority = OrderPriority.BAJA;
+                case "MEDIUM" -> priority = OrderPriority.MEDIA;
+                case "HIGH" -> priority = OrderPriority.ALTA;
+                case "CRITICAL" -> priority = OrderPriority.CRITICA;
+                default -> {
+                    try {
+                        priority = OrderPriority.valueOf(p);
+                    } catch (IllegalArgumentException ignored) {}
+                }
+            }
         }
 
         return MaintenanceOrder.builder()

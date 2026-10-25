@@ -2,11 +2,11 @@ package pe.edu.vallegrande.caneteseguro.fleet.domain.vo;
 
 /**
  * Niveles de prioridad operativa de una orden de mantenimiento.
- * Convención en inglés según estándar DatabaseStorage (NOM-03).
+ * Valores de catálogo en español para interoperabilidad del cluster PRS.
  */
 public enum OrderPriority {
-    LOW,
-    MEDIUM,
-    HIGH,
-    CRITICAL
+    BAJA,
+    MEDIA,
+    ALTA,
+    CRITICA
 }

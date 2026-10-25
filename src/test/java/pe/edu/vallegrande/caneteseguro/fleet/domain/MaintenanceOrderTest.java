@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class MaintenanceOrderTest {
 
     @Test
-    @DisplayName("Should create maintenance order with initial status REGISTERED")
+    @DisplayName("Should create maintenance order with initial status REGISTRADA")
     void shouldCreateOrderCorrectly() {
         MaintenanceOrder order = MaintenanceOrder.create(
                 "ORD-2026-TEST01",
@@ -27,8 +27,8 @@ class MaintenanceOrderTest {
                 "ent-policia-01",
                 "44556677",
                 "inc-009",
-                MaintenanceType.CORRECTIVE_ACCIDENT,
-                OrderPriority.HIGH,
+                MaintenanceType.CORRECTIVO_ACCIDENTE,
+                OrderPriority.ALTA,
                 "Colisión frontal durante persecución",
                 45000,
                 "Requiere peritaje de aseguradora"
@@ -38,8 +38,8 @@ class MaintenanceOrderTest {
         assertEquals("ORD-2026-TEST01", order.getOrderCode());
         assertEquals("rec-001", order.getResourceId());
         assertEquals("EUA-123", order.getResourcePlate());
-        assertEquals(OrderStatus.REGISTERED, order.getOrderStatus());
-        assertEquals(MaintenanceType.CORRECTIVE_ACCIDENT, order.getMaintenanceType());
+        assertEquals(OrderStatus.REGISTRADA, order.getOrderStatus());
+        assertEquals(MaintenanceType.CORRECTIVO_ACCIDENTE, order.getMaintenanceType());
         assertNotNull(order.getCreatedAt());
     }
 
@@ -48,17 +48,17 @@ class MaintenanceOrderTest {
     void shouldFailInvariantValidation() {
         assertThrows(DomainException.class, () ->
                 MaintenanceOrder.create("ORD-1", "", "ABC-123", "ent-1", "123", null,
-                        MaintenanceType.PREVENTIVE, OrderPriority.MEDIUM, "Falla", 1000, null)
+                        MaintenanceType.PREVENTIVO, OrderPriority.MEDIA, "Falla", 1000, null)
         );
 
         assertThrows(DomainException.class, () ->
                 MaintenanceOrder.create("ORD-1", "rec-1", "ABC-123", "ent-1", "123", null,
-                        MaintenanceType.PREVENTIVE, OrderPriority.MEDIUM, "", 1000, null)
+                        MaintenanceType.PREVENTIVO, OrderPriority.MEDIA, "", 1000, null)
         );
     }
 
     @Test
-    @DisplayName("Should transit lifecycle: REGISTERED -> IN_DIAGNOSIS -> IN_WORKSHOP -> QUALITY_CONTROL -> COMPLETED")
+    @DisplayName("Should transit lifecycle: REGISTRADA -> EN_DIAGNOSTICO -> EN_TALLER -> EN_CONTROL_CALIDAD -> FINALIZADA")
     void shouldCompleteLifecycleSuccessfully() {
         MaintenanceOrder order = MaintenanceOrder.create(
                 "ORD-2026-FLOW",
@@ -67,8 +67,8 @@ class MaintenanceOrderTest {
                 "ent-hospital-01",
                 "77889900",
                 null,
-                MaintenanceType.PREVENTIVE,
-                OrderPriority.MEDIUM,
+                MaintenanceType.PREVENTIVO,
+                OrderPriority.MEDIA,
                 "Mantenimiento rutinario de 50,000 km",
                 50000,
                 null
@@ -84,15 +84,15 @@ class MaintenanceOrderTest {
                 .initialDiagnosis("Cambio de pastillas de freno y aceite")
                 .build();
         order.assignWorkshop(workshop);
-        assertEquals(OrderStatus.IN_DIAGNOSIS, order.getOrderStatus());
+        assertEquals(OrderStatus.EN_DIAGNOSTICO, order.getOrderStatus());
 
         // 2. Start repair
         order.startRepair();
-        assertEquals(OrderStatus.IN_WORKSHOP, order.getOrderStatus());
+        assertEquals(OrderStatus.EN_TALLER, order.getOrderStatus());
 
         // 3. Quality control
         order.passToQualityControl();
-        assertEquals(OrderStatus.QUALITY_CONTROL, order.getOrderStatus());
+        assertEquals(OrderStatus.EN_CONTROL_CALIDAD, order.getOrderStatus());
 
         // 4. Issue technical discharge
         TechnicalDischargeReport report = TechnicalDischargeReport.builder()
@@ -105,7 +105,7 @@ class MaintenanceOrderTest {
                 .build();
         order.issueTechnicalDischarge(report);
 
-        assertEquals(OrderStatus.COMPLETED, order.getOrderStatus());
+        assertEquals(OrderStatus.FINALIZADA, order.getOrderStatus());
         assertNotNull(order.getTechnicalDischargeReport());
     }
 
@@ -119,8 +119,8 @@ class MaintenanceOrderTest {
                 "ent-01",
                 "12345678",
                 null,
-                MaintenanceType.PREVENTIVE,
-                OrderPriority.LOW,
+                MaintenanceType.PREVENTIVO,
+                OrderPriority.BAJA,
                 "Avería leve",
                 100,
                 null

@@ -43,8 +43,8 @@ class MaintenanceOrderUseCaseImplTest {
                 .resourceId("rec-001")
                 .resourcePlate("POL-100")
                 .entityId("ent-policia")
-                .maintenanceType(MaintenanceType.CORRECTIVE_ACCIDENT)
-                .priority(OrderPriority.HIGH)
+                .maintenanceType(MaintenanceType.CORRECTIVO_ACCIDENTE)
+                .priority(OrderPriority.ALTA)
                 .failureReason("Choque lateral durante intervención")
                 .reportedMileage(35000)
                 .build();
@@ -64,7 +64,7 @@ class MaintenanceOrderUseCaseImplTest {
 
         StepVerifier.create(useCase.create(createRequest, "mock-token", "12345678"))
                 .expectNextMatches(resp -> resp.getResourceId().equals("rec-001")
-                        && resp.getOrderStatus() == OrderStatus.REGISTERED
+                        && resp.getOrderStatus() == OrderStatus.REGISTRADA
                         && resp.getOrderCode().startsWith("ORD-"))
                 .verifyComplete();
 
@@ -81,14 +81,14 @@ class MaintenanceOrderUseCaseImplTest {
                 "ent-policia",
                 "12345678",
                 null,
-                MaintenanceType.CORRECTIVE,
-                OrderPriority.HIGH,
+                MaintenanceType.CORRECTIVO,
+                OrderPriority.ALTA,
                 "Falla de embrague",
                 35000,
                 null
         );
         existingOrder.setId("orden-mongo-001");
-        existingOrder.setOrderStatus(OrderStatus.IN_WORKSHOP);
+        existingOrder.setOrderStatus(OrderStatus.EN_TALLER);
 
         when(repositoryPort.findById("orden-mongo-001"))
                 .thenReturn(Mono.just(existingOrder));
@@ -108,7 +108,7 @@ class MaintenanceOrderUseCaseImplTest {
                 .build();
 
         StepVerifier.create(useCase.issueTechnicalDischarge("orden-mongo-001", dischargeRequest, "mock-token", "87654321"))
-                .expectNextMatches(resp -> resp.getOrderStatus() == OrderStatus.COMPLETED
+                .expectNextMatches(resp -> resp.getOrderStatus() == OrderStatus.FINALIZADA
                         && resp.getTechnicalDischargeReport() != null
                         && resp.getTechnicalDischargeReport().getExitMileage() == 35015)
                 .verifyComplete();

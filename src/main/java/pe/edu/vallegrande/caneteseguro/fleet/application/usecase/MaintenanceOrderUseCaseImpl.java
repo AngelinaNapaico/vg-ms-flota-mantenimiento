@@ -32,8 +32,8 @@ import java.util.UUID;
 public class MaintenanceOrderUseCaseImpl implements MaintenanceOrderUseCase {
 
     private static final List<String> TERMINAL_STATUSES = List.of(
-            OrderStatus.COMPLETED.name(),
-            OrderStatus.CANCELLED.name()
+            OrderStatus.FINALIZADA.name(),
+            OrderStatus.CANCELADA.name()
     );
 
     private final MaintenanceOrderRepositoryPort repositoryPort;

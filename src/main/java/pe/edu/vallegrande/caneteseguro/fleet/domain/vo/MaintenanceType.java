@@ -2,11 +2,11 @@ package pe.edu.vallegrande.caneteseguro.fleet.domain.vo;
 
 /**
  * Tipos de mantenimiento vehicular soportados.
- * Convención en inglés según estándar DatabaseStorage (NOM-03).
+ * Valores de catálogo en español para interoperabilidad del cluster PRS.
  */
 public enum MaintenanceType {
-    PREVENTIVE,
-    CORRECTIVE,
-    CORRECTIVE_ACCIDENT,
-    REGULATORY_INSPECTION
+    PREVENTIVO,
+    CORRECTIVO,
+    CORRECTIVO_ACCIDENTE,
+    INSPECCION_REGLAMENTARIA
 }
