@@ -25,7 +25,7 @@ class MaintenanceOrderParametrizedTest {
                 "12345678",
                 null,
                 type,
-                OrderPriority.MEDIUM,
+                OrderPriority.MEDIA,
                 "Falla general de prueba",
                 10000,
                 null
@@ -47,8 +47,8 @@ class MaintenanceOrderParametrizedTest {
                         "ent-01",
                         "12345678",
                         null,
-                        MaintenanceType.PREVENTIVE,
-                        OrderPriority.LOW,
+                        MaintenanceType.PREVENTIVO,
+                        OrderPriority.BAJA,
                         invalidReason,
                         500,
                         null

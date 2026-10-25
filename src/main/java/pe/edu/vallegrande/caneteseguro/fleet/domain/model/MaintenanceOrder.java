@@ -72,8 +72,8 @@ public class MaintenanceOrder {
                 .reportedByDni(reportedByDni)
                 .incidentId(incidentId)
                 .maintenanceType(maintenanceType)
-                .priority(priority != null ? priority : OrderPriority.MEDIUM)
-                .orderStatus(OrderStatus.REGISTERED)
+                .priority(priority != null ? priority : OrderPriority.MEDIA)
+                .orderStatus(OrderStatus.REGISTRADA)
                 .failureReason(failureReason)
                 .reportedMileage(reportedMileage)
                 .remarks(remarks)
@@ -84,11 +84,11 @@ public class MaintenanceOrder {
     }
 
     public void assignWorkshop(WorkshopDetail detail) {
-        if (this.orderStatus == OrderStatus.COMPLETED || this.orderStatus == OrderStatus.CANCELLED) {
+        if (this.orderStatus == OrderStatus.FINALIZADA || this.orderStatus == OrderStatus.CANCELADA) {
             throw new DomainException("No se puede asignar taller a una orden en estado " + this.orderStatus);
         }
         this.workshopDetail = detail;
-        this.orderStatus = OrderStatus.IN_DIAGNOSIS;
+        this.orderStatus = OrderStatus.EN_DIAGNOSTICO;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -96,35 +96,35 @@ public class MaintenanceOrder {
         if (this.workshopDetail == null) {
             throw new DomainException("No se puede iniciar reparación sin haber asignado un taller mecánico");
         }
-        if (this.orderStatus != OrderStatus.IN_DIAGNOSIS) {
-            throw new DomainException("Solo se puede iniciar reparación desde estado IN_DIAGNOSIS. Estado actual: " + this.orderStatus);
+        if (this.orderStatus != OrderStatus.EN_DIAGNOSTICO) {
+            throw new DomainException("Solo se puede iniciar reparación desde estado EN_DIAGNOSTICO. Estado actual: " + this.orderStatus);
         }
-        this.orderStatus = OrderStatus.IN_WORKSHOP;
+        this.orderStatus = OrderStatus.EN_TALLER;
         this.updatedAt = LocalDateTime.now();
     }
 
     public void passToQualityControl() {
-        if (this.orderStatus != OrderStatus.IN_WORKSHOP) {
-            throw new DomainException("Solo se puede pasar a control de calidad una orden que esté IN_WORKSHOP. Estado actual: " + this.orderStatus);
+        if (this.orderStatus != OrderStatus.EN_TALLER) {
+            throw new DomainException("Solo se puede pasar a control de calidad una orden que esté EN_TALLER. Estado actual: " + this.orderStatus);
         }
-        this.orderStatus = OrderStatus.QUALITY_CONTROL;
+        this.orderStatus = OrderStatus.EN_CONTROL_CALIDAD;
         this.updatedAt = LocalDateTime.now();
     }
 
     public void issueTechnicalDischarge(TechnicalDischargeReport report) {
-        if (this.orderStatus == OrderStatus.COMPLETED || this.orderStatus == OrderStatus.CANCELLED) {
+        if (this.orderStatus == OrderStatus.FINALIZADA || this.orderStatus == OrderStatus.CANCELADA) {
             throw new DomainException("La orden ya se encuentra cerrada: " + this.orderStatus);
         }
         this.technicalDischargeReport = report;
-        this.orderStatus = OrderStatus.COMPLETED;
+        this.orderStatus = OrderStatus.FINALIZADA;
         this.updatedAt = LocalDateTime.now();
     }
 
     public void cancel(String reason) {
-        if (this.orderStatus == OrderStatus.COMPLETED) {
-            throw new DomainException("No se puede cancelar una orden que ya fue completada (COMPLETED)");
+        if (this.orderStatus == OrderStatus.FINALIZADA) {
+            throw new DomainException("No se puede cancelar una orden que ya fue completada (FINALIZADA)");
         }
-        this.orderStatus = OrderStatus.CANCELLED;
+        this.orderStatus = OrderStatus.CANCELADA;
         this.status = "I";
         this.remarks = (this.remarks != null ? this.remarks + " | " : "") + "Cancelada: " + reason;
         this.updatedAt = LocalDateTime.now();

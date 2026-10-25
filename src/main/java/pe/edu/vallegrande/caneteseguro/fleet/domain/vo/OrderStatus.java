@@ -2,13 +2,13 @@ package pe.edu.vallegrande.caneteseguro.fleet.domain.vo;
 
 /**
  * Estados del ciclo de vida operativo de una orden de mantenimiento.
- * Convención en inglés según estándar DatabaseStorage (NOM-01, NOM-03).
+ * Valores de catálogo en español para interoperabilidad del cluster PRS.
  */
 public enum OrderStatus {
-    REGISTERED,
-    IN_DIAGNOSIS,
-    IN_WORKSHOP,
-    QUALITY_CONTROL,
-    COMPLETED,
-    CANCELLED
+    REGISTRADA,
+    EN_DIAGNOSTICO,
+    EN_TALLER,
+    EN_CONTROL_CALIDAD,
+    FINALIZADA,
+    CANCELADA
 }
