@@ -35,8 +35,8 @@ public class ResourceClientAdapter implements ResourceClientPort {
 
         return webClient.patch()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/{id}/availability")
-                        .queryParam("availability", "EN_MANTENIMIENTO")
+                        .path("/{id}/disponibilidad")
+                        .queryParam("disponibilidad", "EN_MANTENIMIENTO")
                         .build(resourceId))
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + bearerToken)
                 .retrieve()
@@ -48,8 +48,8 @@ public class ResourceClientAdapter implements ResourceClientPort {
                         response.bodyToMono(String.class)
                                 .defaultIfEmpty("External resource service unavailable")
                                 .flatMap(body -> Mono.error(new DomainException("Resource service temporarily unavailable (" + response.statusCode().value() + ")"))))
-                .bodyToMono(OperationalResourceDTO.class)
-                .doOnSuccess(dto -> log.info("Resource {} successfully marked EN_MANTENIMIENTO in vg-ms-recursos", resourceId))
+                .toBodilessEntity()
+                .doOnSuccess(entity -> log.info("Resource {} successfully marked EN_MANTENIMIENTO in vg-ms-recursos", resourceId))
                 .doOnError(err -> log.error("Error setting resource to EN_MANTENIMIENTO: {}", err.getMessage()))
                 .then();
     }
@@ -60,8 +60,8 @@ public class ResourceClientAdapter implements ResourceClientPort {
 
         return webClient.patch()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/{id}/availability")
-                        .queryParam("availability", "DISPONIBLE")
+                        .path("/{id}/disponibilidad")
+                        .queryParam("disponibilidad", "DISPONIBLE")
                         .build(resourceId))
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + bearerToken)
                 .retrieve()
@@ -73,8 +73,8 @@ public class ResourceClientAdapter implements ResourceClientPort {
                         response.bodyToMono(String.class)
                                 .defaultIfEmpty("External resource service unavailable")
                                 .flatMap(body -> Mono.error(new DomainException("Resource service temporarily unavailable (" + response.statusCode().value() + ")"))))
-                .bodyToMono(OperationalResourceDTO.class)
-                .doOnSuccess(dto -> log.info("Resource {} successfully restored to DISPONIBLE in vg-ms-recursos", resourceId))
+                .toBodilessEntity()
+                .doOnSuccess(entity -> log.info("Resource {} successfully restored to DISPONIBLE in vg-ms-recursos", resourceId))
                 .doOnError(err -> log.error("Error restoring resource to DISPONIBLE: {}", err.getMessage()))
                 .then();
     }
