@@ -7,6 +7,7 @@ import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.AssignWorks
 import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.CancelOrderRequest;
 import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.CreateMaintenanceOrderRequest;
 import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.TechnicalDischargeRequest;
+import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.UpdateMaintenanceOrderRequest;
 import pe.edu.vallegrande.caneteseguro.fleet.domain.exception.DomainException;
 import pe.edu.vallegrande.caneteseguro.fleet.domain.model.MaintenanceOrder;
 import pe.edu.vallegrande.caneteseguro.fleet.domain.model.TechnicalDischargeReport;
@@ -107,6 +108,36 @@ public class MaintenanceOrderUseCaseImpl implements MaintenanceOrderUseCase {
                                 return Mono.empty();
                             })
                             .then(repositoryPort.save(newOrder));
+                });
+    }
+
+    @Override
+    public Mono<MaintenanceOrder> update(String id, UpdateMaintenanceOrderRequest request) {
+        log.info("Updating editable header and workshop fields for maintenance order: {}", id);
+        return findById(id)
+                .flatMap(order -> {
+                    WorkshopDetail workshop = null;
+                    if (request.getWorkshopDetail() != null) {
+                        workshop = WorkshopDetail.builder()
+                                .workshopName(request.getWorkshopDetail().getWorkshopName())
+                                .workshopRuc(request.getWorkshopDetail().getWorkshopRuc())
+                                .mechanicInCharge(request.getWorkshopDetail().getMechanicInCharge())
+                                .contactPhone(request.getWorkshopDetail().getContactPhone())
+                                .workshopAddress(request.getWorkshopDetail().getWorkshopAddress())
+                                .estimatedCost(request.getWorkshopDetail().getEstimatedCost())
+                                .estimatedDeliveryDate(request.getWorkshopDetail().getEstimatedDeliveryDate())
+                                .initialDiagnosis(request.getWorkshopDetail().getInitialDiagnosis())
+                                .build();
+                    }
+                    order.updateDetails(
+                            request.getFailureReason(),
+                            request.getReportedMileage(),
+                            request.getPriority(),
+                            request.getRemarks(),
+                            request.getIncidentId(),
+                            workshop
+                    );
+                    return repositoryPort.save(order);
                 });
     }
 

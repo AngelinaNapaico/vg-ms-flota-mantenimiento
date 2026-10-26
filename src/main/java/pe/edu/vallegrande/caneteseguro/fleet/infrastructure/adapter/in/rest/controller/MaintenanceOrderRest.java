@@ -15,6 +15,7 @@ import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.AssignWorks
 import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.CancelOrderRequest;
 import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.CreateMaintenanceOrderRequest;
 import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.TechnicalDischargeRequest;
+import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.UpdateMaintenanceOrderRequest;
 import pe.edu.vallegrande.caneteseguro.fleet.application.dto.response.MaintenanceOrderDetailResponse;
 import pe.edu.vallegrande.caneteseguro.fleet.application.dto.response.MaintenanceOrderResponse;
 import pe.edu.vallegrande.caneteseguro.fleet.domain.exception.DomainException;
@@ -126,6 +127,17 @@ public class MaintenanceOrderRest {
                     .flatMap(dni -> useCase.create(request, token, dni))
                     .map(MaintenanceOrderMapper::toDetailResponse);
         });
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize(RoleConstants.WRITE_ROLES)
+    @Operation(summary = "Update editable header fields of an active maintenance order")
+    public Mono<MaintenanceOrderDetailResponse> update(
+            @PathVariable String id,
+            @Valid @RequestBody UpdateMaintenanceOrderRequest request) {
+        return own(id)
+                .flatMap(scope -> useCase.update(id, request))
+                .map(MaintenanceOrderMapper::toDetailResponse);
     }
 
     @PatchMapping("/{id}/workshop")

@@ -129,4 +129,68 @@ public class MaintenanceOrder {
         this.remarks = (this.remarks != null ? this.remarks + " | " : "") + "Cancelada: " + reason;
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void updateDetails(String failureReason, Integer reportedMileage, OrderPriority priority, String remarks, String incidentId) {
+        updateDetails(failureReason, reportedMileage, priority, remarks, incidentId, null);
+    }
+
+    public void updateDetails(String failureReason, Integer reportedMileage, OrderPriority priority, String remarks, String incidentId, WorkshopDetail workshopDetail) {
+        if (this.orderStatus == OrderStatus.FINALIZADA || this.orderStatus == OrderStatus.CANCELADA) {
+            throw new DomainException("No se pueden modificar datos de una orden en estado " + this.orderStatus);
+        }
+
+        // Si la orden aún está en etapa de registro (REGISTRADA), se permite actualizar los datos de ingreso
+        if (this.orderStatus == OrderStatus.REGISTRADA) {
+            if (failureReason != null && !failureReason.trim().isEmpty()) {
+                this.failureReason = failureReason;
+            }
+            if (reportedMileage != null) {
+                this.reportedMileage = reportedMileage;
+            }
+            if (priority != null) {
+                this.priority = priority;
+            }
+            if (incidentId != null) {
+                this.incidentId = incidentId;
+            }
+        }
+
+        if (remarks != null) {
+            this.remarks = remarks;
+        }
+
+        // En etapas de taller/diagnóstico o posteriores, se actualizan los datos de taller
+        if (workshopDetail != null) {
+            if (this.workshopDetail == null) {
+                this.workshopDetail = workshopDetail;
+            } else {
+                if (workshopDetail.getWorkshopName() != null && !workshopDetail.getWorkshopName().trim().isEmpty()) {
+                    this.workshopDetail.setWorkshopName(workshopDetail.getWorkshopName());
+                }
+                if (workshopDetail.getWorkshopRuc() != null) {
+                    this.workshopDetail.setWorkshopRuc(workshopDetail.getWorkshopRuc());
+                }
+                if (workshopDetail.getMechanicInCharge() != null) {
+                    this.workshopDetail.setMechanicInCharge(workshopDetail.getMechanicInCharge());
+                }
+                if (workshopDetail.getContactPhone() != null) {
+                    this.workshopDetail.setContactPhone(workshopDetail.getContactPhone());
+                }
+                if (workshopDetail.getWorkshopAddress() != null) {
+                    this.workshopDetail.setWorkshopAddress(workshopDetail.getWorkshopAddress());
+                }
+                if (workshopDetail.getEstimatedCost() != null) {
+                    this.workshopDetail.setEstimatedCost(workshopDetail.getEstimatedCost());
+                }
+                if (workshopDetail.getEstimatedDeliveryDate() != null) {
+                    this.workshopDetail.setEstimatedDeliveryDate(workshopDetail.getEstimatedDeliveryDate());
+                }
+                if (workshopDetail.getInitialDiagnosis() != null) {
+                    this.workshopDetail.setInitialDiagnosis(workshopDetail.getInitialDiagnosis());
+                }
+            }
+        }
+
+        this.updatedAt = LocalDateTime.now();
+    }
 }

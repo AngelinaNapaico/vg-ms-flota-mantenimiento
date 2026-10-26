@@ -4,6 +4,7 @@ import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.AssignWorks
 import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.CancelOrderRequest;
 import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.CreateMaintenanceOrderRequest;
 import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.TechnicalDischargeRequest;
+import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.UpdateMaintenanceOrderRequest;
 import pe.edu.vallegrande.caneteseguro.fleet.domain.model.MaintenanceOrder;
 import pe.edu.vallegrande.caneteseguro.fleet.domain.vo.OrderStatus;
 import reactor.core.publisher.Flux;
@@ -27,6 +28,8 @@ public interface MaintenanceOrderUseCase {
     Flux<MaintenanceOrder> findByStatus(OrderStatus status);
 
     Mono<MaintenanceOrder> create(CreateMaintenanceOrderRequest request, String token, String reportedByDni);
+
+    Mono<MaintenanceOrder> update(String id, UpdateMaintenanceOrderRequest request);
 
     Mono<MaintenanceOrder> assignWorkshop(String id, AssignWorkshopRequest request);
 
