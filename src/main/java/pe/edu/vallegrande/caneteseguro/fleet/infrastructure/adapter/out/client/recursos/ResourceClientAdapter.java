@@ -35,8 +35,8 @@ public class ResourceClientAdapter implements ResourceClientPort {
 
         return webClient.patch()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/{id}/disponibilidad")
-                        .queryParam("disponibilidad", "EN_MANTENIMIENTO")
+                        .path("/{id}/availability")
+                        .queryParam("availability", "EN_MANTENIMIENTO")
                         .build(resourceId))
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + bearerToken)
                 .retrieve()
@@ -60,8 +60,8 @@ public class ResourceClientAdapter implements ResourceClientPort {
 
         return webClient.patch()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/{id}/disponibilidad")
-                        .queryParam("disponibilidad", "DISPONIBLE")
+                        .path("/{id}/availability")
+                        .queryParam("availability", "DISPONIBLE")
                         .build(resourceId))
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + bearerToken)
                 .retrieve()
