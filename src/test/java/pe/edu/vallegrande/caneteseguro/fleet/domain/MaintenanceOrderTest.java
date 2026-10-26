@@ -128,4 +128,95 @@ class MaintenanceOrderTest {
 
         assertThrows(DomainException.class, order::startRepair);
     }
+
+    @Test
+    @DisplayName("Should update editable details successfully when order is active")
+    void shouldUpdateDetailsSuccessfully() {
+        MaintenanceOrder order = MaintenanceOrder.create(
+                "ORD-2026-UPD",
+                "rec-01",
+                "XYZ-123",
+                "ent-01",
+                "12345678",
+                null,
+                MaintenanceType.PREVENTIVO,
+                OrderPriority.BAJA,
+                "Avería inicial",
+                100,
+                null
+        );
+
+        order.updateDetails("Falla corregida en frenos", 150, OrderPriority.CRITICA, "Observación nueva", "INC-001");
+
+        assertEquals("Falla corregida en frenos", order.getFailureReason());
+        assertEquals(150, order.getReportedMileage());
+        assertEquals(OrderPriority.CRITICA, order.getPriority());
+        assertEquals("Observación nueva", order.getRemarks());
+        assertEquals("INC-001", order.getIncidentId());
+    }
+
+    @Test
+    @DisplayName("Should fail updating details if order is cancelled")
+    void shouldFailUpdatingDetailsWhenCancelled() {
+        MaintenanceOrder order = MaintenanceOrder.create(
+                "ORD-2026-UPD",
+                "rec-01",
+                "XYZ-123",
+                "ent-01",
+                "12345678",
+                null,
+                MaintenanceType.PREVENTIVO,
+                OrderPriority.BAJA,
+                "Avería inicial",
+                100,
+                null
+        );
+        order.cancel("Error de registro");
+
+        assertThrows(DomainException.class, () ->
+                order.updateDetails("Nuevo motivo", 200, OrderPriority.ALTA, null, null)
+        );
+    }
+
+    @Test
+    @DisplayName("Should update workshop details without rewinding status")
+    void shouldUpdateWorkshopDetailsWithoutRewindingStatus() {
+        MaintenanceOrder order = MaintenanceOrder.create(
+                "ORD-2026-WK",
+                "rec-01",
+                "XYZ-123",
+                "ent-01",
+                "12345678",
+                null,
+                MaintenanceType.CORRECTIVO,
+                OrderPriority.MEDIA,
+                "Falla de embrague",
+                500,
+                null
+        );
+
+        WorkshopDetail initialWorkshop = WorkshopDetail.builder()
+                .workshopName("Taller Original")
+                .mechanicInCharge("Mecánico Antiguo")
+                .build();
+        order.assignWorkshop(initialWorkshop);
+        order.startRepair(); // State is now EN_TALLER
+
+        assertEquals(OrderStatus.EN_TALLER, order.getOrderStatus());
+
+        WorkshopDetail updatedWorkshop = WorkshopDetail.builder()
+                .workshopName("Taller Original")
+                .mechanicInCharge("Mecánico Nuevo Carlos")
+                .contactPhone("999888777")
+                .build();
+
+        order.updateDetails("Falla de embrague y caja", 500, OrderPriority.ALTA, "Ajuste", null, updatedWorkshop);
+
+        assertEquals(OrderStatus.EN_TALLER, order.getOrderStatus()); // Status preserved!
+        assertEquals("Mecánico Nuevo Carlos", order.getWorkshopDetail().getMechanicInCharge());
+        assertEquals("999888777", order.getWorkshopDetail().getContactPhone());
+        assertEquals("Falla de embrague", order.getFailureReason()); // Intake failure reason remains locked as audit record!
+        assertEquals(OrderPriority.MEDIA, order.getPriority()); // Priority remains locked!
+        assertEquals("Ajuste", order.getRemarks());
+    }
 }
