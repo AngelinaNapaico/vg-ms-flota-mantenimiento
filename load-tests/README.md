@@ -1,6 +1,6 @@
 # Pruebas de carga con Apache JMeter
 
-El plan `flota-ordenes.jmx` consulta `GET /api/flota-mantenimiento/ordenes`. Es una lectura segura para medir el servicio sin crear órdenes ni modificar datos. Requiere el backend levantado y un token JWT autorizado para lectura.
+El plan `flota-ordenes.jmx` consulta `GET /api/v1/maintenance-orders`. Es una lectura segura para medir el servicio sin crear órdenes ni modificar datos. Requiere el backend levantado y un token JWT autorizado para lectura.
 
 ## Escenarios propuestos
 

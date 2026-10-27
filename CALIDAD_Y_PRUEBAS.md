@@ -23,7 +23,7 @@ Este repositorio es un backend sin interfaz propia; por eso las dos pruebas Sele
 | Prueba | Funcionalidad evaluada | Pasos | Resultado esperado |
 |---|---|---|---|
 | `swaggerUiCargaLaDocumentacion` | Disponibilidad de Swagger UI | Abrir `/swagger-ui.html` y esperar el contenedor de Swagger | La UI se renderiza y el título contiene `Swagger UI` |
-| `swaggerUiPublicaLosEndpointsDeOrdenes` | Publicación de la API de órdenes en OpenAPI | Abrir Swagger UI y esperar la ruta `/api/flota-mantenimiento/ordenes` | La documentación muestra la ruta y la etiqueta de órdenes |
+| `swaggerUiPublicaLosEndpointsDeOrdenes` | Publicación de la API de órdenes en OpenAPI | Abrir Swagger UI y esperar la ruta `/api/v1/maintenance-orders` | La documentación muestra la ruta y la etiqueta de órdenes |
 
 El resultado obtenido se registra después de correrlas; adjunte captura del navegador/reporte de pruebas y anote PASS/FAIL y cualquier error.
 
