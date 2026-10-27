@@ -1,92 +1,97 @@
-# vg-ms-flota-mantenimiento (Cañete Seguro PRS)
+# vg-ms-fleet-maintenance (Cañete Seguro - PRS1)
 
-Microservicio Transaccional encargado de la **Gestión de Siniestros y Mantenimiento de Flota Vehicular de Emergencia** (patrulleros de serenazgo/policía, camiones de bomberos y ambulancias médicas).
+Microservicio Transaccional de **Gestión de Siniestros y Mantenimiento de Flota de Emergencia** (patrulleros de serenazgo/policía, camiones de bomberos y ambulancias médicas).
+
+Construido según los estándares de **Arquitectura Hexagonal**, **Backend**, **Database Storage** y **Security** definidos en el repositorio central `PRS241_standards`.
 
 ---
 
-## Contexto de Negocio y Transaccionalidad
+## 1. Contexto de Negocio y Transaccionalidad
 
 ### ¿Qué problema de negocio resuelve?
-En el sistema de atención de emergencias **Cañete Seguro**, los vehículos operativos son el recurso más crítico. Cuando una patrulla o ambulancia sufre un choque durante un incidente o requiere mantenimiento preventivo:
+En el sistema de atención de emergencias **Cañete Seguro (PRS1)**, los vehículos operativos son el recurso más crítico. Cuando una patrulla o ambulancia sufre un choque durante un incidente o requiere mantenimiento preventivo:
 1. No puede seguir figurando como `DISPONIBLE` en `vg-ms-recursos`.
-2. Debe gestionarse formalmente una orden de trabajo con trazabilidad: reporte inicial, presupuesto de taller, reparación, control de calidad y dictamen técnico.
-3. Al finalizar, debe rehabilitarse automáticamente para volver a estar `DISPONIBLE` para despacho.
+2. Debe gestionarse formalmente una orden de trabajo con trazabilidad: reporte inicial, taller mecánico asignado, diagnóstico, presupuesto estimado, ejecución en taller, control de calidad y liquidación con costo final.
+3. Al finalizar, el microservicio se encarga automáticamente de rehabilitar el vehículo para que vuelva a estar `DISPONIBLE` para la central de despacho.
 
-### ¿Por qué es un Microservicio Transaccional?
-Implementa una orquestación distribuida (patrón Saga) coordinada mediante `WebClient` reactivo con `vg-ms-recursos`:
-* **Apertura de Orden / Reporte de Siniestro:** Transaccionalmente invoca `vg-ms-recursos` (`PATCH /api/recursos-operativos/{id}/estado?estado=EN_MANTENIMIENTO`) para bloquear el vehículo.
-* **Alta Técnica y Cierre de Orden:** Al emitirse el dictamen de aptitud técnica, invoca `vg-ms-recursos` (`PATCH /api/recursos-operativos/{id}/estado?estado=DISPONIBLE`) para reincorporar la unidad a la flota operativa.
-
----
-
-## Arquitectura Hexagonal DDD (Ports & Adapters)
-
-Siguiendo el estándar de referencia de `vg-ms-auth-ddd`:
-
-```
-vg_ms.flota
-├── orden
-│   ├── domain
-│   │   ├── aggregate          # Aggregate Root (OrdenMantenimiento) con invariantes y lógica pura
-│   │   ├── vo                 # Value Objects (EstadoOrden, TipoMantenimiento, DetalleTaller, InformeAltaTecnica)
-│   │   ├── event              # Eventos de dominio (OrdenMantenimientoCreadaEvent, AltaOperativaEmitidaEvent)
-│   │   └── repository         # Output Port (OrdenMantenimientoRepository - interfaz pura)
-│   ├── application
-│   │   ├── port               # Output Ports externos (RecursoOperativoPort)
-│   │   └── service            # Casos de uso orquestados de forma reactiva (Mono/Flux)
-│   ├── infrastructure
-│   │   ├── persistence        # Documento MongoDB, SpringDataReactiveRepository, Mapper y Adaptador Mongo
-│   │   └── client             # Adaptador WebClient hacia vg-ms-recursos inyectando Bearer JWT
-│   └── interfaces
-│       ├── rest               # Controlador REST reactivo WebFlux (@RestController)
-│       └── dto                # Request y Response DTOs
-└── shared
-    ├── config                 # OpenApiConfig, SecurityConfig, WebClientConfig
-    ├── exception              # DomainException, GlobalExceptionHandler estándar
-    └── security               # RoleConstants, JwtUtils, JwtAuthenticationFilter
-```
+### ¿Por qué es un Microservicio Transaccional Distribuido?
+Implementa una orquestación distribuida (patrón Saga / Coordinación inter-servicios) mediante `WebClient` reactivo con `vg-ms-recursos`:
+* **Apertura de Orden / Reporte de Siniestro:** Transaccionalmente invoca `vg-ms-recursos` (`PATCH /api/v1/resources/{id}/state?state=EN_MANTENIMIENTO`) para bloquear el vehículo.
+* **Alta Técnica y Cierre de Orden:** Al emitirse el dictamen de aptitud técnica, invoca `vg-ms-recursos` (`PATCH /api/v1/resources/{id}/state?state=DISPONIBLE`) para reincorporar la unidad a la flota operativa.
 
 ---
 
-## Cómo Ejecutar el Microservicio
+## 2. Arquitectura Hexagonal DDD (Estándar PR241 / AS241S6)
 
-### Requisitos Previos
-* **Java 17**
-* **Maven 3.9+** (o el wrapper `mvnw`)
-* **MongoDB** (Local en `localhost:27017` o Atlas mediante variable de entorno)
+Estructura de paquetes base `pe.edu.vallegrande.caneteseguro.fleet` alineada con `PRS241_standards`:
 
-### 1. Ejecutar localmente con Maven
-```bash
-mvn clean spring-boot:run
+```text
+pe.edu.vallegrande.caneteseguro.fleet
+├── FleetMaintenanceApplication.java
+├── domain/
+│   ├── model/                      # MaintenanceOrder (Aggregate Root), WorkshopDetail, TechnicalDischargeReport
+│   ├── vo/                         # OrderStatus, MaintenanceType, OrderPriority
+│   ├── exception/                  # DomainException (reglas de negocio e invariantes)
+│   └── port/
+│       ├── in/                     # MaintenanceOrderUseCase (puerto de entrada)
+│       └── out/                    # MaintenanceOrderRepositoryPort, ResourceClientPort (puertos de salida)
+├── application/
+│   ├── usecase/                    # MaintenanceOrderUseCaseImpl
+│   └── dto/
+│       ├── request/                # CreateMaintenanceOrderRequest, AssignWorkshopRequest...
+│       └── response/               # MaintenanceOrderResponse, MaintenanceOrderDetailResponse
+└── infrastructure/
+    ├── adapter/
+    │   ├── in/rest/controller/     # MaintenanceOrderRest (adaptador primario REST)
+    │   └── out/
+    │       ├── persistence/mongodb/# Adaptador secundario MongoDB, MaintenanceOrderDocument, Mapper, Repo
+    │       └── client/recursos/    # ResourceClientAdapter (WebClient reactivo hacia vg-ms-recursos)
+    ├── exception/                  # GlobalExceptionHandler
+    ├── security/                   # SecurityConfig, RoleConstants, SecurityUtils, TenantScope
+    └── config/                     # OpenApiConfig, WebClientConfig
 ```
 
-O asignando variables de entorno:
+---
+
+## 3. Cumplimiento de Estándares PRS241
+
+| Rama Estándar | Requisito Principal | Implementación en este Microservicio |
+| :--- | :--- | :--- |
+| **ProjectArchitecture** | Arquitectura Hexagonal pura y convención de nombres | Paquete institucional `pe.edu.vallegrande.caneteseguro.fleet`, controlador `MaintenanceOrderRest`, puertos in/out, dominio puro desacoplado de frameworks |
+| **DatabaseStorage** | Database per Service en MongoDB Atlas | Base de datos aislada `db_fleet`, colección `maintenance_orders`, BSON camelCase (`orderCode`, `resourceId`), auditoría (`createdAt`, `updatedAt`), soft delete (`active`, `status`) |
+| **Security** | Keycloak IAM y RBAC | OAuth2 Resource Server con JWKS Keycloak (Realm `PRS`), `@PreAuthorize` con `RoleConstants`, aislamiento multitenant con `TenantScope` |
+| **Backend** | Buenas prácticas AS241S6 | Project Reactor (`Mono`/`Flux`) no bloqueante, inyección por constructor, DTOs inmutables, `GlobalExceptionHandler`, pruebas unitarias y parametrizadas |
+
+---
+
+## 4. Endpoints Principales (`/api/v1/maintenance-orders`)
+
+| Método | Endpoint | Descripción | Roles Autorizados |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/maintenance-orders` | Listar todas las órdenes de mantenimiento | READ_ROLES |
+| `GET` | `/api/v1/maintenance-orders/{id}` | Obtener orden por ID | READ_ROLES |
+| `GET` | `/api/v1/maintenance-orders/code/{code}` | Buscar orden por código (ej: `ORD-2026-XXXX`) | READ_ROLES |
+| `GET` | `/api/v1/maintenance-orders/resource/{resourceId}` | Historial de taller de un vehículo específico | READ_ROLES |
+| `GET` | `/api/v1/maintenance-orders/entity/{entityId}` | Listar órdenes por entidad | READ_ROLES |
+| `GET` | `/api/v1/maintenance-orders/status/{status}` | Listar órdenes filtradas por estado | READ_ROLES |
+| `POST` | `/api/v1/maintenance-orders` | Crear orden y pasar vehículo a `EN_MANTENIMIENTO` | WRITE_ROLES |
+| `PATCH`| `/api/v1/maintenance-orders/{id}/workshop` | Asignar taller mecánico y presupuesto estimado | WRITE_ROLES |
+| `PATCH`| `/api/v1/maintenance-orders/{id}/start-repair` | Pasar orden al estado `IN_WORKSHOP` | WRITE_ROLES |
+| `PATCH`| `/api/v1/maintenance-orders/{id}/quality-control` | Pasar orden al estado `QUALITY_CONTROL` | WRITE_ROLES |
+| `POST` | `/api/v1/maintenance-orders/{id}/technical-discharge` | Emitir alta técnica, finalizar orden y rehabilitar a `DISPONIBLE` | WRITE_ROLES |
+| `PATCH`| `/api/v1/maintenance-orders/{id}/cancel` | Cancelar orden y rehabilitar vehículo | WRITE_ROLES |
+
+---
+
+## 5. Ejecución Local
+
 ```bash
-$env:PORT="9012"
-$env:MONGODB_URI="mongodb://localhost:27017/canete_flota_db"
-$env:SERVICES_RECURSOS_URL="http://localhost:9004"
+# Compilar y ejecutar pruebas
+mvn clean test
+
+# Iniciar el servicio en el puerto 9012
 mvn spring-boot:run
 ```
 
-### 2. Documentación Swagger / OpenAPI
-Una vez levantado el servicio, accede a:
-* **Swagger UI:** [http://localhost:9012/swagger-ui.html](http://localhost:9012/swagger-ui.html)
-* **OpenAPI Docs:** [http://localhost:9012/v3/api-docs](http://localhost:9012/v3/api-docs)
-
----
-
-## Endpoints Principales
-
-| Método | Endpoint | Descripción | Roles Requeridos |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/flota-mantenimiento/ordenes` | Apertura de orden / siniestro (inhabilita recurso en `vg-ms-recursos`) | ADMIN, ENTIDAD_ADMIN, OPERADOR_ENTIDAD |
-| `GET` | `/api/flota-mantenimiento/ordenes` | Listar todas las órdenes | READ_ROLES |
-| `GET` | `/api/flota-mantenimiento/ordenes/{id}` | Consultar orden por ID | READ_ROLES |
-| `GET` | `/api/flota-mantenimiento/ordenes/codigo/{codigo}` | Consultar orden por código (ej: ORD-2026-XXXX) | READ_ROLES |
-| `GET` | `/api/flota-mantenimiento/ordenes/recurso/{recursoId}` | Historial de mantenimiento de un vehículo | READ_ROLES |
-| `GET` | `/api/flota-mantenimiento/ordenes/entidad/{entidadId}` | Órdenes asociadas a una entidad | READ_ROLES |
-| `PATCH`| `/api/flota-mantenimiento/ordenes/{id}/taller` | Asignar taller mecánico y presupuesto inicial | WRITE_ROLES |
-| `PATCH`| `/api/flota-mantenimiento/ordenes/{id}/iniciar-reparacion`| Marcar inicio de reparación (`EN_TALLER`) | WRITE_ROLES |
-| `PATCH`| `/api/flota-mantenimiento/ordenes/{id}/control-calidad` | Pasar a control de calidad y pruebas técnicas | WRITE_ROLES |
-| `POST` | `/api/flota-mantenimiento/ordenes/{id}/alta-operativa` | Emitir alta técnica y habilitar vehículo a `DISPONIBLE` | WRITE_ROLES |
-| `PATCH`| `/api/flota-mantenimiento/ordenes/{id}/cancelar` | Cancelar orden y rehabilitar vehículo | WRITE_ROLES |
+* **Swagger UI:** `http://localhost:9012/swagger-ui.html`
+* **OpenAPI Docs:** `http://localhost:9012/v3/api-docs`
