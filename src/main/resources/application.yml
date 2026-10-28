@@ -9,7 +9,7 @@ spring:
   data:
     mongodb:
       database: ${MONGO_FLEET_DATABASE:db_fleet}
-      uri: ${SPRING_DATA_MONGODB_URI}
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb+srv://andre_hermoza:%40Admin_canete-seguro@canete-seguro.0xuzb6l.mongodb.net/db_fleet}
       auto-index-creation: true
   security:
     oauth2:
@@ -33,7 +33,7 @@ services:
     url: ${SERVICES_INCIDENTES_URL:http://localhost:9003}
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:PRS_Canete_Seguro_Super_Secret_Key_2026_Shared_Between_Microservices_Minimum_256_Bits}
 
 springdoc:
   api-docs:

@@ -1,40 +1,46 @@
-# Pruebas de carga con Apache JMeter
+# Pruebas de Carga con Apache JMeter - `vg-ms-flota-mantenimiento`
 
-El plan `flota-ordenes.jmx` consulta `GET /api/v1/maintenance-orders`. Es una lectura segura para medir el servicio sin crear órdenes ni modificar datos. Requiere el backend levantado y un token JWT autorizado para lectura.
+El plan de pruebas de carga (`load-tests/flota-ordenes.jmx`, también disponible en `jmeter/prs_fleet_load_test.jmx` y `doc/jmeter/test_prs_fleet_load.jmx`) ejecuta de manera secuencial (`serialize_threadgroups = true`) los **3 escenarios de carga** (**Verde, Amarillo y Rojo**) en una sola corrida para generar un Dashboard HTML unificado.
 
-## Escenarios propuestos
+## Escenarios Incluidos en el Plan (`.jmx`)
 
-Ejecute cada escenario por separado, conservando la duración y el endpoint para comparar resultados:
+| Escenario | Thread Group | Usuarios | Ramp-up | Loops | Muestras Totales | Endpoints Evaluados |
+|---|---|---:|---:|---:|---:|---|
+| **Verde (Normal)** | `Green Scenario - Normal Load (20 Users)` | 20 | 5 s | 5 | 200 | `[Green] GET /actuator/health`<br>`[Green] GET /api/v1/maintenance-orders/status/REGISTRADA` |
+| **Amarillo (Pico)** | `Yellow Scenario - High / Peak Load (100 Users)` | 100 | 10 s | 5 | 1,000 | `[Yellow] GET /api/v1/maintenance-orders/status/EN_TALLER`<br>`[Yellow] GET /api/v1/maintenance-orders/status/EN_DIAGNOSTICO` |
+| **Rojo (Estrés)** | `Red Scenario - Extreme / Stress Load (400 Users)` | 400 | 5 s | 5 | 4,000 | `[Red] GET /api/v1/maintenance-orders`<br>`[Red] GET /v3/api-docs` |
 
-| Escenario | Usuarios concurrentes | Ramp-up | Duración | Interpretación |
-|---|---:|---:|---:|---|
-| Verde | 5 | 10 s | 60 s | Carga baja; establecer latencia y throughput base |
-| Amarillo | 20 | 20 s | 120 s | Carga media; observar crecimiento de latencia y errores |
-| Rojo | 50 | 30 s | 120 s | Estrés controlado; detectar saturación, errores y recuperación |
+---
 
-Son valores iniciales para laboratorio, no objetivos de capacidad ni garantías. Coordine la prueba y no la ejecute contra producción. Puede ajustar usuarios y duración según los recursos disponibles.
+## 1. Ejecución Local en Windows (PowerShell)
 
-## Ejecución en Windows
+1. Levantar el microservicio en una terminal (corre en el puerto `9012`):
+   ```powershell
+   mvn spring-boot:run
+   ```
+2. En otra terminal PowerShell, ejecutar el script automatizado:
+   ```powershell
+   .\jmeter\run_jmeter.ps1
+   ```
+   O directamente con JMeter 5.6.3:
+   ```powershell
+   C:\tools\apache-jmeter-5.6.3\bin\jmeter.bat -n -t load-tests/flota-ordenes.jmx -l test-results.jtl -e -o load-test-report/ -f
+   ```
+3. Abrir `jmeter\report\index.html` (o `load-test-report\index.html`) en el navegador.
 
-Instale Apache JMeter 5.6.x y configure un token de prueba en la sesión actual de PowerShell (no lo escriba en archivos ni lo comparta):
+---
 
-```powershell
-$env:JMETER_TOKEN = "TOKEN_DE_PRUEBA"
-$token = $env:JMETER_TOKEN
+## 2. Ejecución en GitHub Codespaces (Linux)
 
-jmeter -n -t .\load-tests\flota-ordenes.jmx -Jhost=localhost -Jport=9012 -Jtoken=$token -Jusers=5 -JrampUp=10 -Jduration=60 -l .\target\jmeter-verde.jtl -e -o .\target\jmeter-verde
-jmeter -n -t .\load-tests\flota-ordenes.jmx -Jhost=localhost -Jport=9012 -Jtoken=$token -Jusers=20 -JrampUp=20 -Jduration=120 -l .\target\jmeter-amarillo.jtl -e -o .\target\jmeter-amarillo
-jmeter -n -t .\load-tests\flota-ordenes.jmx -Jhost=localhost -Jport=9012 -Jtoken=$token -Jusers=50 -JrampUp=30 -Jduration=120 -l .\target\jmeter-rojo.jtl -e -o .\target\jmeter-rojo
-```
-
-Cada corrida genera un `.jtl` y un reporte HTML. Use un directorio de salida distinto por corrida. Si obtiene 401/403, primero corrija el token/roles: esa corrida no mide satisfactoriamente la consulta del negocio.
-
-## Qué reportar e interpretar
-
-Registre para cada escenario el promedio, mediana, percentiles 90/95/99, throughput (solicitudes/s), porcentaje y tipo de errores, y uso de CPU/memoria del contenedor. Compare cómo varían al aumentar usuarios; no concluya que el sistema soporta más carga solo por completar una corrida.
-
-- **Verde:** sirve como línea base; valide que no haya errores y anote la latencia habitual.
-- **Amarillo:** compare throughput y percentiles con verde; un aumento pronunciado de latencia o errores puede indicar contención.
-- **Rojo:** identifique el punto donde crecen errores/latencia o cae el throughput; documente si el servicio se recupera al terminar la carga.
-
-No invente resultados: complete la tabla con los valores observados en JMeter y adjunte capturas de los reportes generados.
+1. **Terminal 1 (Levantar el microservicio):**
+   ```bash
+   mvn spring-boot:run
+   ```
+2. **Terminal 2 (Descargar JMeter 5.6.3 oficial y ejecutar el plan completo):**
+   ```bash
+   curl -L https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-5.6.3.tgz -o jmeter.tgz && tar -xzf jmeter.tgz
+   rm -rf test-results.jtl load-test-report load-test-report.zip
+   ./apache-jmeter-5.6.3/bin/jmeter -n -t load-tests/flota-ordenes.jmx -l test-results.jtl -e -o load-test-report/
+   zip -r load-test-report.zip load-test-report/
+   ```
+3. Descargar `load-test-report.zip`, descomprimir la carpeta completa y abrir `index.html`.
