@@ -31,3 +31,6 @@ target/
 ### OS ###
 .DS_Store
 Thumbs.db
+
+load-test-reports/
+apache-jmeter-5.6.3/
