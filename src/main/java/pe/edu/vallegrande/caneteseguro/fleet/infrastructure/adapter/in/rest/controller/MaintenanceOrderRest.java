@@ -32,8 +32,10 @@ import reactor.core.publisher.Mono;
 /**
  * Primary Inbound REST Controller for Fleet Maintenance Orders.
  * 100% compliant with Hexagonal, Reactive WebFlux and AGENTS.md standards:
- * - Direct Mono/Flux publisher return types without unnecessary wrapper classes.
- * - Centralized exception handling via GlobalExceptionHandler (no hardcoded error responses).
+ * - Direct Mono/Flux publisher return types without unnecessary wrapper
+ * classes.
+ * - Centralized exception handling via GlobalExceptionHandler (no hardcoded
+ * error responses).
  * - Pure English REST API standard.
  */
 @Slf4j
@@ -57,8 +59,7 @@ public class MaintenanceOrderRest {
     @PreAuthorize(RoleConstants.READ_ROLES)
     @Operation(summary = "Get maintenance order by unique ID")
     public Mono<MaintenanceOrderDetailResponse> getById(
-            @Parameter(description = "Unique ID of the maintenance order")
-            @PathVariable String id) {
+            @Parameter(description = "Unique ID of the maintenance order") @PathVariable String id) {
         return visible(useCase.findById(id))
                 .switchIfEmpty(Mono.error(new DomainException("Maintenance order not found with ID: " + id)))
                 .map(MaintenanceOrderMapper::toDetailResponse);
@@ -68,8 +69,7 @@ public class MaintenanceOrderRest {
     @PreAuthorize(RoleConstants.READ_ROLES)
     @Operation(summary = "Get maintenance order by tracking code")
     public Mono<MaintenanceOrderDetailResponse> getByCode(
-            @Parameter(description = "Order tracking code (e.g., ORD-2026-XXXX)")
-            @PathVariable String code) {
+            @Parameter(description = "Order tracking code (e.g., ORD-2026-XXXX)") @PathVariable String code) {
         return visible(useCase.findByCode(code))
                 .switchIfEmpty(Mono.error(new DomainException("Maintenance order not found with code: " + code)))
                 .map(MaintenanceOrderMapper::toDetailResponse);
@@ -79,8 +79,7 @@ public class MaintenanceOrderRest {
     @PreAuthorize(RoleConstants.READ_ROLES)
     @Operation(summary = "List maintenance history of an operational resource")
     public Flux<MaintenanceOrderResponse> getByResource(
-            @Parameter(description = "Operational resource ID")
-            @PathVariable String resourceId) {
+            @Parameter(description = "Operational resource ID") @PathVariable String resourceId) {
         return visibles(useCase.findByResource(resourceId))
                 .map(MaintenanceOrderMapper::toResponse);
     }
@@ -89,8 +88,7 @@ public class MaintenanceOrderRest {
     @PreAuthorize(RoleConstants.READ_ROLES)
     @Operation(summary = "List maintenance orders by owning entity")
     public Flux<MaintenanceOrderResponse> getByEntity(
-            @Parameter(description = "Entity ID (police station, fire brigade, hospital)")
-            @PathVariable String entityId) {
+            @Parameter(description = "Entity ID (police station, fire brigade, hospital)") @PathVariable String entityId) {
         return TenantScope.current().flatMapMany(scope -> {
             if (scope.all() || (scope.entidadId() != null && scope.entidadId().equals(entityId))) {
                 return useCase.findByEntity(entityId);
@@ -103,8 +101,7 @@ public class MaintenanceOrderRest {
     @PreAuthorize(RoleConstants.READ_ROLES)
     @Operation(summary = "List orders filtered by lifecycle status")
     public Flux<MaintenanceOrderResponse> getByStatus(
-            @Parameter(description = "Order lifecycle status")
-            @PathVariable OrderStatus status) {
+            @Parameter(description = "Order lifecycle status") @PathVariable OrderStatus status) {
         return visibles(useCase.findByStatus(status))
                 .map(MaintenanceOrderMapper::toResponse);
     }
@@ -197,12 +194,12 @@ public class MaintenanceOrderRest {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // MULTI-TENANT ISOLATION HELPERS (ENTITY / SUPER_ADMIN)
+    // MULTI-TENANT ISOLATION HELPERS (ENTITY / SUPER_ADMIN / MUNICIPALIDAD)
     // ═══════════════════════════════════════════════════════════════════════════
 
     private Flux<MaintenanceOrder> byScope() {
         return TenantScope.current().flatMapMany(scope -> {
-            if (scope.all()) {
+            if (scope.all() || scope.hasRole("MUNICIPALIDAD_ADMIN")) {
                 return useCase.findAll();
             }
             if (scope.entidadId() != null) {
@@ -213,13 +210,17 @@ public class MaintenanceOrderRest {
     }
 
     private Mono<MaintenanceOrder> visible(Mono<MaintenanceOrder> orderMono) {
-        return TenantScope.current().flatMap(scope ->
-                orderMono.filter(order -> scope.canRead(order.getEntityId())));
+        return TenantScope.current().flatMap(scope -> orderMono.flatMap(order -> {
+            if (scope.canRead(order.getEntityId())) {
+                return Mono.just(order);
+            }
+            return Mono.error(TenantScope.forbidden());
+        }));
     }
 
     private Flux<MaintenanceOrder> visibles(Flux<MaintenanceOrder> ordersFlux) {
-        return TenantScope.current().flatMapMany(scope ->
-                ordersFlux.filter(order -> scope.canRead(order.getEntityId())));
+        return TenantScope.current()
+                .flatMapMany(scope -> ordersFlux.filter(order -> scope.canRead(order.getEntityId())));
     }
 
     private Mono<TenantScope> own(String id) {
