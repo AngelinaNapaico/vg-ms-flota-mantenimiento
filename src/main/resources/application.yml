@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: vg-ms-fleet-maintenance
+    name: vg-ms-fleetmaintenance
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   data:

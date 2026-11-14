@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.server.ResponseStatusException;
 import pe.edu.vallegrande.caneteseguro.fleet.domain.exception.DomainException;
+import pe.edu.vallegrande.caneteseguro.fleet.infrastructure.exception.custom.ClientIntegrationException;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -28,14 +29,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DomainException.class)
     public Mono<ResponseEntity<Map<String, Object>>> handleDomain(DomainException ex) {
-        log.warn("Domain exception: {}", ex.getMessage());
-        String msg = (ex.getMessage() != null && !ex.getMessage().isBlank()) ? ex.getMessage() : "Domain business rule violation";
+        log.warn("Domain exception: {}", ex.getMessage(), ex);
+        String msg = (ex.getMessage() != null && !ex.getMessage().isBlank()) ? ex.getMessage()
+                : "Domain business rule violation";
         return Mono.just(buildResponse(HttpStatus.BAD_REQUEST, "Bad Request", msg));
     }
 
     @ExceptionHandler(WebExchangeBindException.class)
     public Mono<ResponseEntity<Map<String, Object>>> handleValidation(WebExchangeBindException ex) {
-        log.warn("Validation error: {}", ex.getMessage());
+        log.warn("Validation error: {}", ex.getMessage(), ex);
         Map<String, String> fieldErrors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
             String field = ((FieldError) error).getField();
@@ -55,33 +57,44 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AuthenticationException.class)
     public Mono<ResponseEntity<Map<String, Object>>> handleAuthentication(AuthenticationException ex) {
-        log.warn("Authentication failure: {}", ex.getMessage());
-        return Mono.just(buildResponse(HttpStatus.UNAUTHORIZED, "Unauthorized", ex.getMessage() != null ? ex.getMessage() : "Authentication required"));
+        log.warn("Authentication failure: {}", ex.getMessage(), ex);
+        return Mono.just(buildResponse(HttpStatus.UNAUTHORIZED, "Unauthorized",
+                "Authentication required or invalid credentials"));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public Mono<ResponseEntity<Map<String, Object>>> handleAccessDenied(AccessDeniedException ex) {
-        log.warn("Access denied: {}", ex.getMessage());
-        return Mono.just(buildResponse(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage() != null ? ex.getMessage() : "Access denied"));
+        log.warn("Access denied: {}", ex.getMessage(), ex);
+        return Mono.just(buildResponse(HttpStatus.FORBIDDEN, "Forbidden", "Access denied: insufficient permissions"));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public Mono<ResponseEntity<Map<String, Object>>> handleDataIntegrity(DataIntegrityViolationException ex) {
-        log.warn("Data integrity conflict: {}", ex.getMessage());
-        return Mono.just(buildResponse(HttpStatus.CONFLICT, "Conflict", "Data integrity violation in database"));
+        log.error("Data integrity conflict: {}", ex.getMessage(), ex);
+        return Mono
+                .just(buildResponse(HttpStatus.CONFLICT, "Conflict", "Data integrity conflict in persistent storage"));
+    }
+
+    @ExceptionHandler(ClientIntegrationException.class)
+    public Mono<ResponseEntity<Map<String, Object>>> handleClientIntegration(ClientIntegrationException ex) {
+        log.error("Client integration failure ({}): {}", ex.getStatusCode(), ex.getMessage(), ex);
+        return Mono
+                .just(buildResponse(HttpStatus.BAD_GATEWAY, "Bad Gateway", "External service communication failure"));
     }
 
     @ExceptionHandler(ResponseStatusException.class)
     public Mono<ResponseEntity<Map<String, Object>>> handleResponseStatus(ResponseStatusException ex) {
-        log.warn("Response status exception: {}", ex.getMessage());
-        String reason = (ex.getReason() != null && !ex.getReason().isBlank()) ? ex.getReason() : "Resource processing error";
-        return Mono.just(buildResponse(HttpStatus.resolve(ex.getStatusCode().value()), ex.getStatusCode().toString(), reason));
+        log.warn("Response status exception: {}", ex.getMessage(), ex);
+        String reason = (ex.getReason() != null && !ex.getReason().isBlank()) ? ex.getReason()
+                : "Resource processing error";
+        return Mono.just(buildResponse(HttpStatus.resolve(ex.getStatusCode().value()), "Resource Error", reason));
     }
 
     @ExceptionHandler(Exception.class)
     public Mono<ResponseEntity<Map<String, Object>>> handleGeneric(Exception ex) {
         log.error("Unhandled error: {}", ex.getMessage(), ex);
-        return Mono.just(buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "An unexpected error occurred"));
+        return Mono.just(buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error",
+                "An unexpected error occurred"));
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String error, String message) {

@@ -28,10 +28,11 @@ import java.util.stream.Collectors;
 public class SecurityConfig {
 
     @Bean
-    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+    public SecurityWebFilterChain springSecurityFilterChain(
+            ServerHttpSecurity http,
+            org.springframework.security.oauth2.jwt.ReactiveJwtDecoder jwtDecoder) {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
-                .cors(org.springframework.security.config.Customizer.withDefaults())
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(
                                 "/v3/api-docs/**",
@@ -39,16 +40,15 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/webjars/**",
                                 "/actuator/health",
-                                "/actuator/info"
-                        ).permitAll()
+                                "/actuator/info")
+                        .permitAll()
                         .pathMatchers("/internal/**").permitAll()
-                        .anyExchange().authenticated()
-                )
+                        .pathMatchers("/api/v1/**").authenticated()
+                        .anyExchange().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt
-                                .jwtAuthenticationConverter(jwtAuthenticationConverter())
-                        )
-                )
+                                .jwtDecoder(jwtDecoder)
+                                .jwtAuthenticationConverter(jwtAuthenticationConverter())))
                 .build();
     }
 

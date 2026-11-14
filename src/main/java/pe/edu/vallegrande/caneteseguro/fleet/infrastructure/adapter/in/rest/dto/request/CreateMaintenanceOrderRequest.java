@@ -1,4 +1,4 @@
-package pe.edu.vallegrande.caneteseguro.fleet.application.dto.request;
+package pe.edu.vallegrande.caneteseguro.fleet.infrastructure.adapter.in.rest.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -53,30 +53,31 @@ public class CreateMaintenanceOrderRequest {
     @NotNull(message = "El tipo de mantenimiento es obligatorio")
     @JsonProperty("maintenanceType")
     @JsonAlias({"tipoMantenimiento", "maintenanceType"})
-    @Schema(description = "PREVENTIVE, CORRECTIVE, CORRECTIVE_ACCIDENT, REGULATORY_INSPECTION", example = "CORRECTIVE")
+    @Schema(description = "Naturaleza de la intervención mecánica", example = "CORRECTIVO_ACCIDENTE")
     private MaintenanceType maintenanceType;
 
+    @NotNull(message = "La prioridad de atención es obligatoria")
     @JsonProperty("priority")
     @JsonAlias({"prioridad", "priority"})
-    @Schema(description = "LOW, MEDIUM, HIGH, CRITICAL", example = "HIGH")
+    @Schema(description = "Nivel de urgencia operativa", example = "ALTA")
     private OrderPriority priority;
 
-    @NotBlank(message = "El motivo de avería o mantenimiento es obligatorio")
-    @Size(max = 500, message = "El motivo de avería no puede exceder 500 caracteres")
+    @NotBlank(message = "El motivo de la falla o solicitud es obligatorio")
+    @Size(max = 1000, message = "El motivo de la falla no puede exceder 1000 caracteres")
     @JsonProperty("failureReason")
-    @JsonAlias({"motivoAveria", "failureReason"})
-    @Schema(description = "Descripción detallada del motivo", example = "Rotura de suspensión delantera tras persecución")
+    @JsonAlias({"motivoFalla", "failureReason"})
+    @Schema(description = "Descripción de la avería, síntoma o requerimiento técnico", example = "Falla de encendido y pérdida de presión en frenos tras persecución")
     private String failureReason;
 
-    @Min(value = 0, message = "El kilometraje no puede ser negativo")
+    @Min(value = 0, message = "El kilometraje reportado debe ser mayor o igual a cero")
     @JsonProperty("reportedMileage")
     @JsonAlias({"kilometrajeReportado", "reportedMileage"})
-    @Schema(description = "Kilometraje actual del odómetro", example = "45200")
+    @Schema(description = "Odómetro actual del móvil", example = "84500")
     private Integer reportedMileage;
 
     @Size(max = 1000, message = "Las observaciones no pueden exceder 1000 caracteres")
     @JsonProperty("remarks")
     @JsonAlias({"observaciones", "remarks"})
-    @Schema(description = "Observaciones adicionales iniciales", example = "Unidad inmovilizada en base policial")
+    @Schema(description = "Notas adicionales de la guardia o del chofer", example = "Vehículo inmovilizado en maestranza de Cañete")
     private String remarks;
 }

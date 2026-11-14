@@ -1,4 +1,4 @@
-package pe.edu.vallegrande.caneteseguro.fleet.application.dto.response;
+package pe.edu.vallegrande.caneteseguro.fleet.infrastructure.adapter.in.rest.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;

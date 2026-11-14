@@ -25,34 +25,30 @@ class MaintenanceOrderParametrizedTest {
                 "12345678",
                 null,
                 type,
-                OrderPriority.MEDIA,
+                OrderPriority.MEDIUM,
                 "Falla general de prueba",
                 10000,
-                null
-        );
+                null);
 
         assertNotNull(order);
         assertEquals(type, order.getMaintenanceType());
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "   "})
+    @ValueSource(strings = { "", "   " })
     @DisplayName("Should fail when failure reason is blank or spaces")
     void shouldFailWithInvalidReason(String invalidReason) {
-        assertThrows(DomainException.class, () ->
-                MaintenanceOrder.create(
-                        "ORD-2026-FAIL",
-                        "rec-01",
-                        "EUA-123",
-                        "ent-01",
-                        "12345678",
-                        null,
-                        MaintenanceType.PREVENTIVO,
-                        OrderPriority.BAJA,
-                        invalidReason,
-                        500,
-                        null
-                )
-        );
+        assertThrows(DomainException.class, () -> MaintenanceOrder.create(
+                "ORD-2026-FAIL",
+                "rec-01",
+                "EUA-123",
+                "ent-01",
+                "12345678",
+                null,
+                MaintenanceType.PREVENTIVE,
+                OrderPriority.LOW,
+                invalidReason,
+                500,
+                null));
     }
 }

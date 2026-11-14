@@ -1,4 +1,4 @@
-package pe.edu.vallegrande.caneteseguro.fleet.application.dto.request;
+package pe.edu.vallegrande.caneteseguro.fleet.infrastructure.adapter.in.rest.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;

@@ -16,7 +16,8 @@ import java.util.stream.Collectors;
 /**
  * Multitenant scope of the authenticated user (JWT claims
  * {@code mid}/{@code eid}).
- * Business rule for Fleet and Maintenance:
+ * 100% in English according to GLOBAL-NAM-EN-001.
+ * Business rules:
  * - SUPER_ADMIN/ADMIN has global view and management of all orders and fleets.
  * - MUNICIPALIDAD_ADMIN has global read/audit visibility to supervise fleets
  * and export reports.
@@ -25,7 +26,15 @@ import java.util.stream.Collectors;
  * - Users without {@code eid} and not admin/super_admin cannot create or modify
  * maintenance orders.
  */
-public record TenantScope(boolean all, String municipalidadId, String entidadId, Set<String> roles) {
+public record TenantScope(boolean all, String municipalityId, String entityId, Set<String> roles) {
+
+    public String municipalidadId() {
+        return municipalityId;
+    }
+
+    public String entidadId() {
+        return entityId;
+    }
 
     public static Mono<TenantScope> current() {
         return ReactiveSecurityContextHolder.getContext()
@@ -55,13 +64,13 @@ public record TenantScope(boolean all, String municipalidadId, String entidadId,
     /**
      * Read access for maintenance order belonging to {@code eid}.
      * SUPER_ADMIN, ADMIN, MUNICIPALIDAD_ADMIN (supervisor) or staff belonging to
-     * the same {@code entidadId}.
+     * the same {@code entityId}.
      */
     public boolean canRead(String eid) {
         if (all || hasRole("MUNICIPALIDAD_ADMIN")) {
             return true;
         }
-        return entidadId != null && entidadId.equals(eid);
+        return entityId != null && entityId.equals(eid);
     }
 
     /**
@@ -76,7 +85,7 @@ public record TenantScope(boolean all, String municipalidadId, String entidadId,
         if (hasRole("MUNICIPALIDAD_ADMIN") || hasRole("ANALISTA")) {
             return false;
         }
-        return entidadId != null;
+        return entityId != null;
     }
 
     public TenantScope requireWriter() {

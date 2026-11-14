@@ -1,4 +1,4 @@
-package pe.edu.vallegrande.caneteseguro.fleet.application.dto.request;
+package pe.edu.vallegrande.caneteseguro.fleet.infrastructure.adapter.in.rest.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -53,12 +53,6 @@ public class TechnicalDischargeRequest {
     @Size(max = 1000, message = "Las observaciones no pueden exceder 1000 caracteres")
     @JsonProperty("remarks")
     @JsonAlias({"observaciones", "remarks"})
-    @Schema(description = "Observaciones finales de mantenimiento", example = "Próximo mantenimiento preventivo programado a los 90,000 km")
+    @Schema(description = "Observaciones de entrega y garantía", example = "Garantía de 6 meses en repuestos y mano de obra")
     private String remarks;
-
-    @Size(max = 500, message = "La URL de evidencia no puede exceder 500 caracteres")
-    @JsonProperty("mediaUrl")
-    @JsonAlias({"mediaUrl", "fotoUrl", "evidenciaUrl"})
-    @Schema(description = "URL HTTPS de la evidencia o acta de entrega técnica alojada en Cloudinary", example = "https://res.cloudinary.com/vallegrande/image/upload/v1234/acta-conformidad.pdf")
-    private String mediaUrl;
 }

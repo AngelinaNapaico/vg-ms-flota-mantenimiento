@@ -1,17 +1,16 @@
 package pe.edu.vallegrande.caneteseguro.fleet.domain.port.in;
 
-import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.AssignWorkshopRequest;
-import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.CancelOrderRequest;
-import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.CreateMaintenanceOrderRequest;
-import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.TechnicalDischargeRequest;
-import pe.edu.vallegrande.caneteseguro.fleet.application.dto.request.UpdateMaintenanceOrderRequest;
 import pe.edu.vallegrande.caneteseguro.fleet.domain.model.MaintenanceOrder;
+import pe.edu.vallegrande.caneteseguro.fleet.domain.model.TechnicalDischargeReport;
+import pe.edu.vallegrande.caneteseguro.fleet.domain.model.WorkshopDetail;
 import pe.edu.vallegrande.caneteseguro.fleet.domain.vo.OrderStatus;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
- * Puerto de entrada (Inbound Port) en inglés para el ciclo de mantenimiento.
+ * Inbound port (casos de uso) para el ciclo de mantenimiento de flota.
+ * HEX-02, STD-022 & STD-033: Dominio puro nombrado como UseCase, libre de DTOs
+ * e infraestructura.
  */
 public interface MaintenanceOrderUseCase {
 
@@ -27,17 +26,17 @@ public interface MaintenanceOrderUseCase {
 
     Flux<MaintenanceOrder> findByStatus(OrderStatus status);
 
-    Mono<MaintenanceOrder> create(CreateMaintenanceOrderRequest request, String token, String reportedByDni);
+    Mono<MaintenanceOrder> create(MaintenanceOrder order, String token);
 
-    Mono<MaintenanceOrder> update(String id, UpdateMaintenanceOrderRequest request);
+    Mono<MaintenanceOrder> update(String id, MaintenanceOrder order);
 
-    Mono<MaintenanceOrder> assignWorkshop(String id, AssignWorkshopRequest request);
+    Mono<MaintenanceOrder> assignWorkshop(String id, WorkshopDetail workshop);
 
     Mono<MaintenanceOrder> startRepair(String id);
 
     Mono<MaintenanceOrder> passToQualityControl(String id);
 
-    Mono<MaintenanceOrder> issueTechnicalDischarge(String id, TechnicalDischargeRequest request, String token, String approvedByDni);
+    Mono<MaintenanceOrder> issueTechnicalDischarge(String id, TechnicalDischargeReport dischargeReport, String token);
 
-    Mono<MaintenanceOrder> cancel(String id, CancelOrderRequest request, String token);
+    Mono<MaintenanceOrder> cancel(String id, String reason, String remarks, String token);
 }

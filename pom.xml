@@ -8,10 +8,10 @@
 		<version>3.4.1</version>
 		<relativePath/>
 	</parent>
-	<groupId>pe.edu.vallegrande.caneteseguro</groupId>
-	<artifactId>vg-ms-fleet-maintenance</artifactId>
+	<groupId>pe.edu.vallegrande</groupId>
+	<artifactId>vg-ms-fleetmaintenance</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>vg-ms-fleet-maintenance</name>
+	<name>vg-ms-fleetmaintenance</name>
 	<description>Emergency fleet maintenance and claims management service for Cañete Seguro</description>
 
 	<properties>
