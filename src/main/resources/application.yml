@@ -44,5 +44,5 @@ springdoc:
 
 logging:
   level:
-    pe.edu.vallegrande.caneteseguro.fleet: DEBUG
+    pe.edu.vallegrande.vgmsfleetmaintenance: DEBUG
     org.springframework.data.mongodb: INFO
