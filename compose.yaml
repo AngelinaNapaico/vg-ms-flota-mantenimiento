@@ -19,10 +19,10 @@ services:
     container_name: vg-ms-fleetmaintenance
     environment:
       SERVER_PORT: 9012
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       SPRING_DATA_MONGODB_URI: ${SPRING_DATA_MONGODB_URI:mongodb+srv://${MONGODB_USER:CHANGE_ME_MONGODB_USER}:${MONGODB_PASSWORD:CHANGE_ME_MONGODB_PASSWORD}@${MONGODB_HOST:localhost}/${MONGO_FLEET_DATABASE:db_fleet}}
-      KEYCLOAK_ISSUER_URI: http://keycloak:8090/realms/PRS
-      KEYCLOAK_JWK_SET_URI: http://keycloak:8090/realms/PRS/protocol/openid-connect/certs
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-https://iam.vallegrande.edu.pe/realms/PRS}
+      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-https://iam.vallegrande.edu.pe/realms/PRS/protocol/openid-connect/certs}
       SERVICES_RECURSOS_URL: http://vg-ms-recursos:9004
       SERVICES_CATALOGO_URL: http://vg-ms-catalogos:9005
       SERVICES_INCIDENTES_URL: http://vg-ms-incidentes:9003

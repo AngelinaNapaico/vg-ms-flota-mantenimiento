@@ -19,6 +19,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -49,9 +50,12 @@ class MultiTenancyIntegrationTest {
     private static final String ORDER_A_ID = "order-ent-a-001";
     private static final String ORDER_B_ID = "order-ent-b-002";
 
+    private MaintenanceOrderDocument docA;
+    private MaintenanceOrderDocument docB;
+
     @BeforeEach
     void setupFixtures() {
-        MaintenanceOrderDocument docA = MaintenanceOrderDocument.builder()
+        docA = MaintenanceOrderDocument.builder()
                 .id(ORDER_A_ID)
                 .orderCode("ORD-2026-AAAAAA")
                 .resourceId("REC-001")
@@ -65,7 +69,7 @@ class MultiTenancyIntegrationTest {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        MaintenanceOrderDocument docB = MaintenanceOrderDocument.builder()
+        docB = MaintenanceOrderDocument.builder()
                 .id(ORDER_B_ID)
                 .orderCode("ORD-2026-BBBBBB")
                 .resourceId("REC-002")
@@ -90,13 +94,20 @@ class MultiTenancyIntegrationTest {
         webTestClient.get()
                 .uri("/api/v1/maintenance-orders/" + ORDER_B_ID)
                 .exchange()
-                .expectStatus().value(status -> assertNotEquals(HttpStatus.OK.value(), status));
+                .expectStatus().value(status -> assertNotEquals(HttpStatus.OK.value(), status))
+                .expectBody()
+                .jsonPath("$.orderCode").doesNotExist()
+                .jsonPath("$.resourceId").doesNotExist();
     }
 
     @Test
     @WithMockUser(username = "operator-a", roles = "OPERADOR_ENTIDAD")
     @DisplayName("Should reject order mutation across different tenants")
     void shouldRejectMutationAcrossEntities() {
+        String originalReason = docB.getFailureReason();
+        String originalEntity = docB.getEntityId();
+        String originalResource = docB.getResourceId();
+
         String updatePayload = """
             {
                 "failureReason": "Unauthorized modification attempt",
@@ -109,7 +120,32 @@ class MultiTenancyIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(updatePayload)
                 .exchange()
-                .expectStatus().value(status -> assertNotEquals(HttpStatus.OK.value(), status));
+                .expectStatus().value(status -> assertNotEquals(HttpStatus.OK.value(), status))
+                .expectBody()
+                .jsonPath("$.failureReason").doesNotExist();
+
+        assertEquals(originalReason, docB.getFailureReason());
+        assertEquals(originalEntity, docB.getEntityId());
+        assertEquals(originalResource, docB.getResourceId());
+    }
+
+    @Test
+    @WithMockUser(username = "operator-a", roles = "OPERADOR_ENTIDAD")
+    @DisplayName("Should verify order remains unchanged when unauthorized tenant attempts mutation")
+    void shouldVerifyOrderRemainsUnchangedOnCrossTenantMutation() {
+        String originalReason = docB.getFailureReason();
+
+        webTestClient.patch()
+                .uri("/api/v1/maintenance-orders/" + ORDER_B_ID + "/cancel")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"reason\": \"Illegal cancellation attempt\"}")
+                .exchange()
+                .expectStatus().value(status -> assertNotEquals(HttpStatus.OK.value(), status))
+                .expectBody()
+                .jsonPath("$.orderCode").doesNotExist();
+
+        assertEquals(originalReason, docB.getFailureReason());
+        assertEquals(ENTITY_B, docB.getEntityId());
     }
 
     @Test

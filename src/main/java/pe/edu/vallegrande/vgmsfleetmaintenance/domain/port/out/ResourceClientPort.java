@@ -10,4 +10,8 @@ public interface ResourceClientPort {
     Mono<Void> disableResourceForMaintenance(String resourceId, String bearerToken);
 
     Mono<Void> enableResourceToAvailable(String resourceId, String bearerToken);
+
+    Mono<Void> disableResourceForMaintenance(String resourceId);
+
+    Mono<Void> enableResourceToAvailable(String resourceId);
 }

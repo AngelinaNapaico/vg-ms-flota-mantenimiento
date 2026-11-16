@@ -1,4 +1,4 @@
-package pe.edu.vallegrande.vgmsfleetmaintenance.application.dto.response;
+package pe.edu.vallegrande.vgmsfleetmaintenance.application.dto.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -6,30 +6,20 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.MaintenanceType;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderPriority;
-import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderStatus;
-
-import java.time.LocalDateTime;
 
 /**
- * Application response DTO for maintenance order.
- * Application data transfer object representing maintenance order details.
+ * Application request DTO for creating a maintenance order.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MaintenanceOrderDto {
-    private String id;
-    private String orderCode;
+public class CreateMaintenanceOrderRequest {
     private String resourceId;
     private String resourcePlate;
     private String entityId;
     private MaintenanceType maintenanceType;
-    private OrderStatus orderStatus;
     private OrderPriority priority;
     private String failureReason;
     private Integer reportedMileage;
-    private String status;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }

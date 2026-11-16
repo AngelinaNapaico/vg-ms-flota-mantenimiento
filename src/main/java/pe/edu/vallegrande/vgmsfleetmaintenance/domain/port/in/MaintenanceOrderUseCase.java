@@ -24,6 +24,8 @@ public interface MaintenanceOrderUseCase {
 
     Flux<MaintenanceOrder> findByStatus(OrderStatus status);
 
+    Mono<MaintenanceOrder> create(MaintenanceOrder order);
+
     Mono<MaintenanceOrder> create(MaintenanceOrder order, String token);
 
     Mono<MaintenanceOrder> update(String id, MaintenanceOrder order);
@@ -34,7 +36,11 @@ public interface MaintenanceOrderUseCase {
 
     Mono<MaintenanceOrder> passToQualityControl(String id);
 
+    Mono<MaintenanceOrder> issueTechnicalDischarge(String id, TechnicalDischargeReport dischargeReport);
+
     Mono<MaintenanceOrder> issueTechnicalDischarge(String id, TechnicalDischargeReport dischargeReport, String token);
+
+    Mono<MaintenanceOrder> cancel(String id, String reason, String remarks);
 
     Mono<MaintenanceOrder> cancel(String id, String reason, String remarks, String token);
 }

@@ -46,7 +46,6 @@ public class SecurityConfig {
                                 "/actuator/health",
                                 "/actuator/info")
                         .permitAll()
-                        .pathMatchers("/internal/**").permitAll()
                         .pathMatchers("/api/v1/**").authenticated()
                         .anyExchange().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2

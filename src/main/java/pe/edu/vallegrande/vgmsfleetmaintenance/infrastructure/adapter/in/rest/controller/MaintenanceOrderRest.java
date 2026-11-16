@@ -9,12 +9,10 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ServerWebExchange;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.in.MaintenanceOrderUseCase;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderStatus;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.dto.request.AssignWorkshopRequest;
@@ -111,13 +109,10 @@ public class MaintenanceOrderRest {
         @PreAuthorize(RoleConstants.WRITE_ROLES)
         @Operation(summary = "Create maintenance order and set vehicle to EN_MANTENIMIENTO")
         public Mono<MaintenanceOrderDetailResponse> create(
-                        @Valid @RequestBody CreateMaintenanceOrderRequest request,
-                        ServerWebExchange exchange) {
-                String token = extractToken(exchange);
-
+                        @Valid @RequestBody CreateMaintenanceOrderRequest request) {
                 return SecurityUtils.getCurrentUsername()
-                                .flatMap(dni -> useCase.create(MaintenanceOrderRestMapper.toDomain(request, dni),
-                                                token))
+                                .defaultIfEmpty("SYSTEM")
+                                .flatMap(dni -> useCase.create(MaintenanceOrderRestMapper.toDomain(request, dni)))
                                 .map(MaintenanceOrderRestMapper::toDetailResponse);
         }
 
@@ -164,13 +159,11 @@ public class MaintenanceOrderRest {
         @Operation(summary = "Issue technical discharge, complete order and restore resource to DISPONIBLE")
         public Mono<MaintenanceOrderDetailResponse> issueTechnicalDischarge(
                         @PathVariable @NotBlank @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Invalid ID format") String id,
-                        @Valid @RequestBody TechnicalDischargeRequest request,
-                        ServerWebExchange exchange) {
-                String token = extractToken(exchange);
-
+                        @Valid @RequestBody TechnicalDischargeRequest request) {
                 return SecurityUtils.getCurrentUsername()
+                                .defaultIfEmpty("SYSTEM")
                                 .flatMap(dni -> useCase.issueTechnicalDischarge(id,
-                                                MaintenanceOrderRestMapper.toDomain(request, dni), token))
+                                                MaintenanceOrderRestMapper.toDomain(request, dni)))
                                 .map(MaintenanceOrderRestMapper::toDetailResponse);
         }
 
@@ -179,23 +172,8 @@ public class MaintenanceOrderRest {
         @Operation(summary = "Cancel maintenance order and restore resource to DISPONIBLE")
         public Mono<MaintenanceOrderDetailResponse> cancel(
                         @PathVariable @NotBlank @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Invalid ID format") String id,
-                        @Valid @RequestBody CancelOrderRequest request,
-                        ServerWebExchange exchange) {
-                String token = extractToken(exchange);
-
-                return useCase.cancel(id, request.getReason(), "", token)
+                        @Valid @RequestBody CancelOrderRequest request) {
+                return useCase.cancel(id, request.getReason(), "")
                                 .map(MaintenanceOrderRestMapper::toDetailResponse);
-        }
-
-        // ═══════════════════════════════════════════════════
-        // HELPERS
-        // ═══════════════════════════════════════════════════
-
-        private String extractToken(ServerWebExchange exchange) {
-                String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-                if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                        return authHeader.substring(7);
-                }
-                return "";
         }
 }

@@ -11,6 +11,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.domain.model.MaintenanceOrder;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.model.TechnicalDischargeReport;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.MaintenanceOrderRepositoryPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.ResourceClientPort;
+import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.SecurityContextPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.MaintenanceType;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderPriority;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderStatus;
@@ -31,6 +32,9 @@ class MaintenanceOrderServiceTest {
         @Mock
         private ResourceClientPort resourceClientPort;
 
+        @Mock
+        private SecurityContextPort securityContextPort;
+
         @InjectMocks
         private MaintenanceOrderService useCase;
 
@@ -38,6 +42,9 @@ class MaintenanceOrderServiceTest {
 
         @BeforeEach
         void setUp() {
+                lenient().when(securityContextPort.getCurrentUsername()).thenReturn(Mono.just("test-user"));
+                lenient().when(securityContextPort.getCurrentEntityId()).thenReturn(Mono.just("ent-policia"));
+
                 newOrder = MaintenanceOrder.create(
                                 null,
                                 "rec-001",

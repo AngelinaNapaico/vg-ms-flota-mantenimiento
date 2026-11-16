@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 @CompoundIndexes({
         @CompoundIndex(name = "idx_entity_order_code", def = "{'entityId': 1, 'orderCode': 1}", unique = true),
         @CompoundIndex(name = "idx_entity_status", def = "{'entityId': 1, 'orderStatus': 1}"),
+        @CompoundIndex(name = "idx_entity_resource_status", def = "{'entityId': 1, 'resourceId': 1, 'orderStatus': 1}"),
         @CompoundIndex(name = "idx_resource_status", def = "{'resourceId': 1, 'orderStatus': 1}")
 })
 public class MaintenanceOrderDocument {
@@ -36,7 +37,6 @@ public class MaintenanceOrderDocument {
     @Id
     private String id;
 
-    @Indexed
     @Field("orderCode")
     private String orderCode;
 
