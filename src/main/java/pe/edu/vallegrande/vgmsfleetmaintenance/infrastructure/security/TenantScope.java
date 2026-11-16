@@ -59,7 +59,7 @@ public record TenantScope(boolean all, String municipalityId, String entityId, S
      * the same {@code entityId}.
      */
     public boolean canRead(String eid) {
-        if (all || hasRole("MUNICIPALIDAD_ADMIN")) {
+        if (all || hasRole("MUNICIPALIDAD_ADMIN") || hasRole("ANALISTA")) {
             return true;
         }
         return entityId != null && entityId.equals(eid);

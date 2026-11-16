@@ -30,7 +30,7 @@ import java.time.LocalDateTime;
         @CompoundIndex(name = "idx_entity_order_code", def = "{'entityId': 1, 'orderCode': 1}", unique = true),
         @CompoundIndex(name = "idx_entity_status", def = "{'entityId': 1, 'orderStatus': 1}"),
         @CompoundIndex(name = "idx_entity_resource_status", def = "{'entityId': 1, 'resourceId': 1, 'orderStatus': 1}"),
-        @CompoundIndex(name = "idx_resource_status", def = "{'resourceId': 1, 'orderStatus': 1}")
+        @CompoundIndex(name = "idx_unique_active_resource_order", def = "{'entityId': 1, 'resourceId': 1, 'active': 1}", partialFilter = "{'active': true}", unique = true)
 })
 public class MaintenanceOrderDocument {
 

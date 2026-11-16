@@ -104,6 +104,10 @@ public final class MaintenanceOrderRestMapper {
     }
 
     public static MaintenanceOrder toDomain(CreateMaintenanceOrderRequest request, String reportedByDni) {
+        return toDomain(request, reportedByDni, request != null ? request.getEntityId() : null);
+    }
+
+    public static MaintenanceOrder toDomain(CreateMaintenanceOrderRequest request, String reportedByDni, String entityId) {
         if (request == null) {
             return null;
         }
@@ -111,7 +115,7 @@ public final class MaintenanceOrderRestMapper {
                 null,
                 request.getResourceId(),
                 request.getResourcePlate(),
-                request.getEntityId(),
+                entityId != null ? entityId : request.getEntityId(),
                 reportedByDni,
                 request.getIncidentId(),
                 request.getMaintenanceType(),

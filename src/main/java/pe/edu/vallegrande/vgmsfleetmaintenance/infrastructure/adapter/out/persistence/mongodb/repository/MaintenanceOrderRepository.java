@@ -17,7 +17,11 @@ public interface MaintenanceOrderRepository extends ReactiveMongoRepository<Main
 
     Mono<MaintenanceOrderDocument> findByOrderCode(String orderCode);
 
+    Mono<MaintenanceOrderDocument> findByEntityIdAndOrderCode(String entityId, String orderCode);
+
     Flux<MaintenanceOrderDocument> findByResourceId(String resourceId);
+
+    Flux<MaintenanceOrderDocument> findByEntityIdAndResourceId(String entityId, String resourceId);
 
     Flux<MaintenanceOrderDocument> findByEntityId(String entityId);
 

@@ -39,24 +39,38 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
     @Override
     public Mono<MaintenanceOrder> findByOrderCode(String orderCode) {
         return TenantScope.current()
-                .flatMap(scope -> repository.findByOrderCode(orderCode)
-                        .filter(doc -> canRead(scope, doc))
-                        .map(MaintenanceOrderDocumentMapper::toDomain));
+                .flatMap(scope -> {
+                    if (scope.all() || scope.hasRole("MUNICIPALIDAD_ADMIN")) {
+                        return repository.findByOrderCode(orderCode);
+                    }
+                    if (scope.entityId() != null) {
+                        return repository.findByEntityIdAndOrderCode(scope.entityId(), orderCode);
+                    }
+                    return Mono.error(TenantScope.forbidden());
+                })
+                .map(MaintenanceOrderDocumentMapper::toDomain);
     }
 
     @Override
     public Flux<MaintenanceOrder> findByResourceId(String resourceId) {
         return TenantScope.current()
-                .flatMapMany(scope -> repository.findByResourceId(resourceId)
-                        .filter(doc -> canRead(scope, doc))
-                        .map(MaintenanceOrderDocumentMapper::toDomain));
+                .flatMapMany(scope -> {
+                    if (scope.all() || scope.hasRole("MUNICIPALIDAD_ADMIN")) {
+                        return repository.findByResourceId(resourceId);
+                    }
+                    if (scope.entityId() != null) {
+                        return repository.findByEntityIdAndResourceId(scope.entityId(), resourceId);
+                    }
+                    return Flux.error(TenantScope.forbidden());
+                })
+                .map(MaintenanceOrderDocumentMapper::toDomain);
     }
 
     @Override
     public Flux<MaintenanceOrder> findByEntityId(String entityId) {
         return TenantScope.current()
                 .flatMapMany(scope -> {
-                    if (scope.all() || scope.hasRole("MUNICIPALIDAD_ADMIN")) {
+                    if (scope.all() || scope.hasRole("MUNICIPALIDAD_ADMIN") || scope.hasRole("ANALISTA")) {
                         return repository.findByEntityId(entityId);
                     }
                     if (scope.entityId() != null && scope.entityId().equals(entityId)) {
@@ -71,7 +85,7 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
     public Flux<MaintenanceOrder> findByOrderStatus(String orderStatus) {
         return TenantScope.current()
                 .flatMapMany(scope -> {
-                    if (scope.all() || scope.hasRole("MUNICIPALIDAD_ADMIN")) {
+                    if (scope.all() || scope.hasRole("MUNICIPALIDAD_ADMIN") || scope.hasRole("ANALISTA")) {
                         return repository.findByOrderStatus(orderStatus);
                     }
                     if (scope.entityId() != null) {
@@ -86,7 +100,7 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
     public Flux<MaintenanceOrder> findAll() {
         return TenantScope.current()
                 .flatMapMany(scope -> {
-                    if (scope.all() || scope.hasRole("MUNICIPALIDAD_ADMIN")) {
+                    if (scope.all() || scope.hasRole("MUNICIPALIDAD_ADMIN") || scope.hasRole("ANALISTA")) {
                         return repository.findAll();
                     }
                     if (scope.entityId() != null) {
@@ -142,11 +156,14 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
     public Mono<Boolean> existsByResourceIdAndOrderStatusNotIn(String resourceId, Collection<String> statuses) {
         return TenantScope.current()
                 .flatMap(scope -> {
-                    if (scope.all() || scope.entityId() == null) {
+                    if (scope.all()) {
                         return repository.existsByResourceIdAndOrderStatusNotIn(resourceId, statuses);
                     }
-                    return repository.existsByResourceIdAndEntityIdAndOrderStatusNotIn(resourceId, scope.entityId(),
-                            statuses);
+                    if (scope.entityId() != null) {
+                        return repository.existsByResourceIdAndEntityIdAndOrderStatusNotIn(resourceId, scope.entityId(),
+                                statuses);
+                    }
+                    return Mono.error(TenantScope.forbidden());
                 });
     }
 

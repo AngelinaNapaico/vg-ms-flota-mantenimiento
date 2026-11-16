@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -86,6 +87,8 @@ class MultiTenancyIntegrationTest {
 
         when(repository.findById(eq(ORDER_A_ID))).thenReturn(Mono.just(docA));
         when(repository.findById(eq(ORDER_B_ID))).thenReturn(Mono.just(docB));
+        when(resourceClientPort.validateResourceBelongsToEntity(any(), any(), any())).thenReturn(Mono.empty());
+        when(resourceClientPort.validateResourceBelongsToEntity(any(), any())).thenReturn(Mono.empty());
     }
 
     @Test

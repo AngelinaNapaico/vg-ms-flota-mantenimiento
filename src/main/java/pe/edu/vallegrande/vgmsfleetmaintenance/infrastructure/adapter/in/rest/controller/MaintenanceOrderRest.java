@@ -25,6 +25,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.dt
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.mapper.MaintenanceOrderRestMapper;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security.RoleConstants;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security.SecurityUtils;
+import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security.TenantScope;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -111,9 +112,28 @@ public class MaintenanceOrderRest {
         @Operation(summary = "Create maintenance order and set vehicle to EN_MANTENIMIENTO")
         public Mono<MaintenanceOrderDetailResponse> create(
                         @Valid @RequestBody CreateMaintenanceOrderRequest request) {
-                return SecurityUtils.getCurrentUsername()
-                                .defaultIfEmpty("SYSTEM")
-                                .flatMap(dni -> useCase.create(MaintenanceOrderRestMapper.toDomain(request, dni)))
+                return TenantScope.current()
+                                .flatMap(scope -> {
+                                        String effectiveEntityId;
+                                        if (scope.all()) {
+                                                effectiveEntityId = (request.getEntityId() != null && !request.getEntityId().isBlank())
+                                                                ? request.getEntityId()
+                                                                : scope.entityId();
+                                        } else {
+                                                if (scope.entityId() == null) {
+                                                        return Mono.error(TenantScope.forbidden());
+                                                }
+                                                if (request.getEntityId() != null && !request.getEntityId().isBlank()
+                                                                && !request.getEntityId().equals(scope.entityId())) {
+                                                        return Mono.error(TenantScope.forbidden());
+                                                }
+                                                effectiveEntityId = scope.entityId();
+                                        }
+
+                                        return SecurityUtils.getCurrentUsername()
+                                                        .defaultIfEmpty("SYSTEM")
+                                                        .flatMap(dni -> useCase.create(MaintenanceOrderRestMapper.toDomain(request, dni, effectiveEntityId)));
+                                })
                                 .map(MaintenanceOrderRestMapper::toDetailResponse);
         }
 

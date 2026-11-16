@@ -9,9 +9,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.model.MaintenanceOrder;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.model.TechnicalDischargeReport;
+import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.AuthClientPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.MaintenanceOrderRepositoryPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.ResourceClientPort;
-import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.SecurityContextPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.MaintenanceType;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderPriority;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderStatus;
@@ -33,7 +33,7 @@ class MaintenanceOrderServiceTest {
         private ResourceClientPort resourceClientPort;
 
         @Mock
-        private SecurityContextPort securityContextPort;
+        private AuthClientPort authClientPort;
 
         @InjectMocks
         private MaintenanceOrderService useCase;
@@ -42,8 +42,10 @@ class MaintenanceOrderServiceTest {
 
         @BeforeEach
         void setUp() {
-                lenient().when(securityContextPort.getCurrentUsername()).thenReturn(Mono.just("test-user"));
-                lenient().when(securityContextPort.getCurrentEntityId()).thenReturn(Mono.just("ent-policia"));
+                lenient().when(authClientPort.getCurrentUsername()).thenReturn(Mono.just("test-user"));
+                lenient().when(authClientPort.getCurrentEntityId()).thenReturn(Mono.just("ent-policia"));
+                lenient().when(resourceClientPort.validateResourceBelongsToEntity(any(), any(), any())).thenReturn(Mono.empty());
+                lenient().when(resourceClientPort.validateResourceBelongsToEntity(any(), any())).thenReturn(Mono.empty());
 
                 newOrder = MaintenanceOrder.create(
                                 null,
