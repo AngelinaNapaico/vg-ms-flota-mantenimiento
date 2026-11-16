@@ -55,14 +55,14 @@ public record TenantScope(boolean all, String municipalityId, String entityId, S
 
     /**
      * Read access for maintenance order belonging to {@code eid}.
-     * SUPER_ADMIN, ADMIN, MUNICIPALIDAD_ADMIN (supervisor) or staff belonging to
-     * the same {@code entityId}.
+     * Restricted to documents belonging to the user's entityId, or cross-tenant
+     * access exclusively for global administrators without tenant binding.
      */
     public boolean canRead(String eid) {
-        if (all || hasRole("MUNICIPALIDAD_ADMIN") || hasRole("ANALISTA")) {
-            return true;
+        if (entityId != null) {
+            return entityId.equals(eid);
         }
-        return entityId != null && entityId.equals(eid);
+        return all;
     }
 
     /**

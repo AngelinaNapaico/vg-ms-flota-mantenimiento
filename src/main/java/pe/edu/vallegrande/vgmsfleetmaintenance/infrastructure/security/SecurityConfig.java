@@ -3,6 +3,7 @@ package pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
@@ -33,6 +34,24 @@ import java.util.stream.Collectors;
 @EnableReactiveMethodSecurity
 public class SecurityConfig {
 
+    private static final String[] PUBLIC_PATHS = {
+            "/v3/api-docs/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/webjars/**",
+            "/actuator/health",
+            "/actuator/info"
+    };
+
+    private static final String[] READ_ROLES = {
+            "SUPER_ADMIN", "ADMIN", "MUNICIPALIDAD_ADMIN", "ENTIDAD_ADMIN",
+            "OPERADOR_ENTIDAD", "CIUDADANO", "ANALISTA", "ANALISTA_ENTIDAD"
+    };
+
+    private static final String[] WRITE_ROLES = {
+            "SUPER_ADMIN", "ADMIN", "ENTIDAD_ADMIN", "OPERADOR_ENTIDAD"
+    };
+
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(
             ServerHttpSecurity http,
@@ -40,15 +59,12 @@ public class SecurityConfig {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers(
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/webjars/**",
-                                "/actuator/health",
-                                "/actuator/info")
-                        .permitAll()
-                        .pathMatchers("/api/v1/**").authenticated()
+                        .pathMatchers(PUBLIC_PATHS).permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/maintenance-orders/**").hasAnyRole(READ_ROLES)
+                        .pathMatchers(HttpMethod.POST, "/api/v1/maintenance-orders/**").hasAnyRole(WRITE_ROLES)
+                        .pathMatchers(HttpMethod.PUT, "/api/v1/maintenance-orders/**").hasAnyRole(WRITE_ROLES)
+                        .pathMatchers(HttpMethod.PATCH, "/api/v1/maintenance-orders/**").hasAnyRole(WRITE_ROLES)
+                        .pathMatchers(HttpMethod.DELETE, "/api/v1/maintenance-orders/**").hasAnyRole(WRITE_ROLES)
                         .anyExchange().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .authenticationEntryPoint((exchange, ex) -> {

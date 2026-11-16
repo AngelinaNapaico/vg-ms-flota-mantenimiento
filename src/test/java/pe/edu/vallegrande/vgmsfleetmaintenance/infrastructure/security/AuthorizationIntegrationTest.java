@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.ResourceClientPort;
+import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.repository.AuditLogRepository;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.repository.MaintenanceOrderRepository;
 
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -30,6 +31,9 @@ class AuthorizationIntegrationTest {
 
     @MockBean
     private MaintenanceOrderRepository repository;
+
+    @MockBean
+    private AuditLogRepository auditLogRepository;
 
     @MockBean
     private ResourceClientPort resourceClientPort;

@@ -15,6 +15,7 @@ import org.springframework.web.server.ServerWebInputException;
 import pe.edu.vallegrande.vgmsfleetmaintenance.application.mapper.FieldNameMapper;
 import pe.edu.vallegrande.vgmsfleetmaintenance.application.mapper.ValidationMessageMapper;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.exception.DomainException;
+import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.exception.custom.UpstreamServiceException;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -117,9 +118,18 @@ public class GlobalExceptionHandler {
                 "Request cannot be processed by the server"));
     }
 
+    @ExceptionHandler(UpstreamServiceException.class)
+    public Mono<ResponseEntity<Map<String, Object>>> handleUpstream(UpstreamServiceException ex) {
+        log.warn("External upstream service error - type: {}", ex.getClass().getSimpleName(), ex);
+        return Mono.just(buildResponse(
+                HttpStatus.BAD_GATEWAY,
+                "Bad Gateway",
+                "Upstream external service communication failed"));
+    }
+
     @ExceptionHandler(Exception.class)
     public Mono<ResponseEntity<Map<String, Object>>> handleGeneric(Exception ex) {
-        log.error("Unhandled server error - type: {}", ex.getClass().getSimpleName());
+        log.error("Unhandled server error - type: {}", ex.getClass().getSimpleName(), ex);
         return Mono.just(buildResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Internal Server Error",

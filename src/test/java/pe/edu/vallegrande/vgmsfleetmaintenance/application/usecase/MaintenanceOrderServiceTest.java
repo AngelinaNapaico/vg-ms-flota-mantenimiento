@@ -9,6 +9,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.model.MaintenanceOrder;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.model.TechnicalDischargeReport;
+import pe.edu.vallegrande.vgmsfleetmaintenance.domain.model.WorkshopDetail;
+import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.AuditLogRepositoryPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.AuthClientPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.MaintenanceOrderRepositoryPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.ResourceClientPort;
@@ -35,6 +37,9 @@ class MaintenanceOrderServiceTest {
         @Mock
         private AuthClientPort authClientPort;
 
+        @Mock
+        private AuditLogRepositoryPort auditLogRepositoryPort;
+
         @InjectMocks
         private MaintenanceOrderService useCase;
 
@@ -46,6 +51,7 @@ class MaintenanceOrderServiceTest {
                 lenient().when(authClientPort.getCurrentEntityId()).thenReturn(Mono.just("ent-policia"));
                 lenient().when(resourceClientPort.validateResourceBelongsToEntity(any(), any(), any())).thenReturn(Mono.empty());
                 lenient().when(resourceClientPort.validateResourceBelongsToEntity(any(), any())).thenReturn(Mono.empty());
+                lenient().when(auditLogRepositoryPort.recordAudit(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(Mono.empty());
 
                 newOrder = MaintenanceOrder.create(
                                 null,

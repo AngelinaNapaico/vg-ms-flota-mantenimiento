@@ -14,6 +14,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.ResourceClientPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.document.MaintenanceOrderDocument;
+import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.repository.AuditLogRepository;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.repository.MaintenanceOrderRepository;
 import reactor.core.publisher.Mono;
 
@@ -21,7 +22,6 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -40,6 +40,9 @@ class MultiTenancyIntegrationTest {
 
     @MockBean
     private MaintenanceOrderRepository repository;
+
+    @MockBean
+    private AuditLogRepository auditLogRepository;
 
     @MockBean
     private ResourceClientPort resourceClientPort;
@@ -87,8 +90,6 @@ class MultiTenancyIntegrationTest {
 
         when(repository.findById(eq(ORDER_A_ID))).thenReturn(Mono.just(docA));
         when(repository.findById(eq(ORDER_B_ID))).thenReturn(Mono.just(docB));
-        when(resourceClientPort.validateResourceBelongsToEntity(any(), any(), any())).thenReturn(Mono.empty());
-        when(resourceClientPort.validateResourceBelongsToEntity(any(), any())).thenReturn(Mono.empty());
     }
 
     @Test

@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,24 +28,28 @@ public class CreateMaintenanceOrderRequest {
 
     @NotBlank(message = "El ID del recurso operativo es obligatorio")
     @Size(max = 100, message = "El ID del recurso no puede exceder 100 caracteres")
+    @Pattern(regexp = "^[a-fA-F0-9]{24}$|^[a-zA-Z0-9_-]+$", message = "El ID del recurso contiene caracteres no permitidos")
     @JsonProperty("resourceId")
     @JsonAlias({"recursoId", "resourceId"})
     @Schema(description = "Identificador del recurso en vg-ms-recursos", example = "68ef45d12a8934bc78901234")
     private String resourceId;
 
     @Size(max = 20, message = "La placa no puede exceder 20 caracteres")
+    @Pattern(regexp = "^[a-zA-Z0-9-]+$", message = "La placa contiene caracteres no permitidos")
     @JsonProperty("resourcePlate")
     @JsonAlias({"recursoPlaca", "resourcePlate"})
     @Schema(description = "Placa o identificador visible del vehículo", example = "POL-102")
     private String resourcePlate;
 
     @Size(max = 100, message = "El ID de entidad no puede exceder 100 caracteres")
+    @Pattern(regexp = "^[a-fA-F0-9]{24}$|^[a-zA-Z0-9_-]+$", message = "El ID de la entidad contiene caracteres no permitidos")
     @JsonProperty("entityId")
     @JsonAlias({"entidadId", "entityId"})
     @Schema(description = "ID de la entidad propietaria", example = "65ab12c98d7123ef45678901")
     private String entityId;
 
     @Size(max = 100, message = "El ID del incidente no puede exceder 100 caracteres")
+    @Pattern(regexp = "^[a-fA-F0-9]{24}$|^[a-zA-Z0-9_-]+$", message = "El ID del incidente contiene caracteres no permitidos")
     @JsonProperty("incidentId")
     @JsonAlias({"incidenteId", "incidentId"})
     @Schema(description = "ID del incidente si proviene de un siniestro", example = "7b5f792c7c84938ece21b113")

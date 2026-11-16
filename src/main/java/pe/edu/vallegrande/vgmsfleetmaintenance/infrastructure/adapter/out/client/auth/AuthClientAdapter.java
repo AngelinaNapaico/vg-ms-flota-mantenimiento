@@ -2,6 +2,8 @@ package pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.clien
 
 import org.springframework.stereotype.Component;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.AuthClientPort;
+import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.client.auth.dto.AuthUserDTO;
+import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.client.auth.mapper.AuthUserMapper;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security.SecurityUtils;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security.TenantScope;
 import reactor.core.publisher.Mono;
@@ -15,12 +17,20 @@ public class AuthClientAdapter implements AuthClientPort {
 
     @Override
     public Mono<String> getCurrentUsername() {
-        return SecurityUtils.getCurrentUsername();
+        return getAuthenticatedUser().map(AuthUserDTO::getUsername);
     }
 
     @Override
     public Mono<String> getCurrentEntityId() {
-        return TenantScope.current()
-                .flatMap(scope -> scope.entityId() != null ? Mono.just(scope.entityId()) : Mono.empty());
+        return getAuthenticatedUser()
+                .flatMap(user -> user.getEntityId() != null ? Mono.just(user.getEntityId()) : Mono.empty());
+    }
+
+    public Mono<AuthUserDTO> getAuthenticatedUser() {
+        return SecurityUtils.getCurrentUsername()
+                .defaultIfEmpty("ANONYMOUS")
+                .flatMap(username -> TenantScope.current()
+                        .map(scope -> AuthUserMapper.toDTO(username, scope))
+                        .defaultIfEmpty(AuthUserMapper.toDTO(username, null)));
     }
 }

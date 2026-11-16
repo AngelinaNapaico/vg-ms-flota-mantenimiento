@@ -8,6 +8,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.domain.model.MaintenanceOrder;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.model.TechnicalDischargeReport;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.model.WorkshopDetail;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.in.MaintenanceOrderUseCase;
+import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.AuditLogRepositoryPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.AuthClientPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.MaintenanceOrderRepositoryPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.ResourceClientPort;
@@ -39,6 +40,7 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
     private final MaintenanceOrderRepositoryPort repositoryPort;
     private final ResourceClientPort resourceClientPort;
     private final AuthClientPort authClientPort;
+    private final AuditLogRepositoryPort auditLogRepositoryPort;
 
     @Override
     public Flux<MaintenanceOrder> findAll() {
@@ -274,7 +276,9 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
 
     private void audit(String action, String orderCode, String resourceId, String actor, String tenant,
                        String result, String correlationId, Throwable error) {
-        String errorName = error != null ? error.getClass().getSimpleName() : "NONE";
+        String errorName = error != null
+                ? (error.getMessage() != null ? error.getClass().getSimpleName() + ": " + error.getMessage() : error.getClass().getSimpleName())
+                : null;
         log.info("AUDIT: Timestamp={}, Action={}, Order={}, Resource={}, Actor={}, Tenant={}, Result={}, CorrelationId={}, Error={}",
                 Instant.now(), action,
                 orderCode != null ? orderCode : "N/A",
@@ -283,7 +287,12 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                 tenant != null ? tenant : "N/A",
                 result,
                 correlationId != null ? correlationId : UUID.randomUUID().toString(),
-                errorName);
+                errorName != null ? errorName : "NONE");
+
+        if (auditLogRepositoryPort != null) {
+            auditLogRepositoryPort.recordAudit(action, orderCode, resourceId, actor, tenant, result, correlationId, errorName)
+                    .subscribe();
+        }
     }
 
     private Mono<String> resolveCurrentActor() {

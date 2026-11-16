@@ -33,7 +33,7 @@ public class SecurityBootstrapValidator {
         log.info("=".repeat(80));
         log.info("SECURITY BOOTSTRAP - OIDC AUTHENTICATION VALIDATION");
         log.info("Active profile: {}", isProd ? "PRODUCTION" : "DEVELOPMENT");
-        log.info("Issuer URI: {}", redactUrl(issuerUri));
+        log.info("Issuer host: {}", extractSafeHost(issuerUri));
 
         if (issuerUri == null || issuerUri.isBlank()) {
             String msg = "FATAL: KEYCLOAK_ISSUER_URI is not configured. OAuth2/Keycloak cannot start.";
@@ -66,10 +66,18 @@ public class SecurityBootstrapValidator {
         }
     }
 
-    private String redactUrl(String url) {
-        if (url == null) {
-            return "null";
+    private String extractSafeHost(String url) {
+        if (url == null || url.isBlank()) {
+            return "unconfigured";
         }
-        return url.replaceAll("://[^@/]+@", "://[redacted]@");
+        try {
+            java.net.URI uri = java.net.URI.create(url);
+            String scheme = uri.getScheme() != null ? uri.getScheme() : "http";
+            String host = uri.getHost() != null ? uri.getHost() : "unknown-host";
+            int port = uri.getPort();
+            return port > 0 ? scheme + "://" + host + ":" + port : scheme + "://" + host;
+        } catch (Exception e) {
+            return "sanitized-host";
+        }
     }
 }

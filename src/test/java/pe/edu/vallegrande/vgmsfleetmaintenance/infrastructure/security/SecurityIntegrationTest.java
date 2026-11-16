@@ -10,6 +10,7 @@ import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.ResourceClientPort;
+import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.repository.AuditLogRepository;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.repository.MaintenanceOrderRepository;
 
 /**
@@ -26,6 +27,9 @@ class SecurityIntegrationTest {
 
     @MockBean
     private MaintenanceOrderRepository repository;
+
+    @MockBean
+    private AuditLogRepository auditLogRepository;
 
     @MockBean
     private ResourceClientPort resourceClientPort;

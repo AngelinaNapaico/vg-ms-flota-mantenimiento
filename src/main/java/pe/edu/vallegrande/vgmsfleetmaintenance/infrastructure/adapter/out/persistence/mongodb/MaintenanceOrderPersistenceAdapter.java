@@ -40,11 +40,11 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
     public Mono<MaintenanceOrder> findByOrderCode(String orderCode) {
         return TenantScope.current()
                 .flatMap(scope -> {
-                    if (scope.all() || scope.hasRole("MUNICIPALIDAD_ADMIN")) {
-                        return repository.findByOrderCode(orderCode);
-                    }
                     if (scope.entityId() != null) {
                         return repository.findByEntityIdAndOrderCode(scope.entityId(), orderCode);
+                    }
+                    if (scope.all()) {
+                        return repository.findByOrderCode(orderCode);
                     }
                     return Mono.error(TenantScope.forbidden());
                 })
@@ -55,11 +55,11 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
     public Flux<MaintenanceOrder> findByResourceId(String resourceId) {
         return TenantScope.current()
                 .flatMapMany(scope -> {
-                    if (scope.all() || scope.hasRole("MUNICIPALIDAD_ADMIN")) {
-                        return repository.findByResourceId(resourceId);
-                    }
                     if (scope.entityId() != null) {
                         return repository.findByEntityIdAndResourceId(scope.entityId(), resourceId);
+                    }
+                    if (scope.all()) {
+                        return repository.findByResourceId(resourceId);
                     }
                     return Flux.error(TenantScope.forbidden());
                 })
@@ -70,10 +70,13 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
     public Flux<MaintenanceOrder> findByEntityId(String entityId) {
         return TenantScope.current()
                 .flatMapMany(scope -> {
-                    if (scope.all() || scope.hasRole("MUNICIPALIDAD_ADMIN") || scope.hasRole("ANALISTA")) {
+                    if (scope.entityId() != null) {
+                        if (!scope.entityId().equals(entityId)) {
+                            return Flux.empty();
+                        }
                         return repository.findByEntityId(entityId);
                     }
-                    if (scope.entityId() != null && scope.entityId().equals(entityId)) {
+                    if (scope.all()) {
                         return repository.findByEntityId(entityId);
                     }
                     return Flux.empty();
@@ -85,11 +88,11 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
     public Flux<MaintenanceOrder> findByOrderStatus(String orderStatus) {
         return TenantScope.current()
                 .flatMapMany(scope -> {
-                    if (scope.all() || scope.hasRole("MUNICIPALIDAD_ADMIN") || scope.hasRole("ANALISTA")) {
-                        return repository.findByOrderStatus(orderStatus);
-                    }
                     if (scope.entityId() != null) {
                         return repository.findByEntityIdAndOrderStatus(scope.entityId(), orderStatus);
+                    }
+                    if (scope.all()) {
+                        return repository.findByOrderStatus(orderStatus);
                     }
                     return Flux.empty();
                 })
@@ -100,11 +103,11 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
     public Flux<MaintenanceOrder> findAll() {
         return TenantScope.current()
                 .flatMapMany(scope -> {
-                    if (scope.all() || scope.hasRole("MUNICIPALIDAD_ADMIN") || scope.hasRole("ANALISTA")) {
-                        return repository.findAll();
-                    }
                     if (scope.entityId() != null) {
                         return repository.findByEntityId(scope.entityId());
+                    }
+                    if (scope.all()) {
+                        return repository.findAll();
                     }
                     return Flux.empty();
                 })
@@ -118,9 +121,26 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
                     MaintenanceOrderDocument document = MaintenanceOrderDocumentMapper.toDocument(order);
 
                     if (order.getId() != null) {
-                        if (!canWrite(scope, document)) {
-                            return Mono.error(TenantScope.forbidden());
-                        }
+                        return repository.findById(order.getId())
+                                .switchIfEmpty(Mono.error(new DomainException("Maintenance order not found")))
+                                .flatMap(persistedDoc -> {
+                                    if (!canWrite(scope, persistedDoc)) {
+                                        return Mono.error(TenantScope.forbidden());
+                                    }
+                                    document.setEntityId(persistedDoc.getEntityId());
+                                    if (document.getCreatedAt() == null) {
+                                        document.setCreatedAt(persistedDoc.getCreatedAt());
+                                    }
+                                    document.setUpdatedAt(LocalDateTime.now());
+                                    return repository.save(document);
+                                })
+                                .onErrorMap(DuplicateKeyException.class,
+                                        ex -> new DomainException(
+                                                "A maintenance order with this code or active status already exists", ex))
+                                .onErrorMap(OptimisticLockingFailureException.class,
+                                        ex -> new DomainException(
+                                                "The maintenance order was updated concurrently. Please retry.", ex))
+                                .map(MaintenanceOrderDocumentMapper::toDomain);
                     } else {
                         if (!scope.canWrite()) {
                             return Mono.error(TenantScope.forbidden());
@@ -134,21 +154,20 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
                             }
                             document.setEntityId(scope.entityId());
                         }
-                    }
+                        if (document.getCreatedAt() == null) {
+                            document.setCreatedAt(LocalDateTime.now());
+                        }
+                        document.setUpdatedAt(LocalDateTime.now());
 
-                    if (document.getCreatedAt() == null) {
-                        document.setCreatedAt(LocalDateTime.now());
+                        return repository.save(document)
+                                .onErrorMap(DuplicateKeyException.class,
+                                        ex -> new DomainException(
+                                                "A maintenance order with this code or active status already exists", ex))
+                                .onErrorMap(OptimisticLockingFailureException.class,
+                                        ex -> new DomainException(
+                                                "The maintenance order was updated concurrently. Please retry.", ex))
+                                .map(MaintenanceOrderDocumentMapper::toDomain);
                     }
-                    document.setUpdatedAt(LocalDateTime.now());
-
-                    return repository.save(document)
-                            .onErrorMap(DuplicateKeyException.class,
-                                    ex -> new DomainException(
-                                            "A maintenance order with this code or active status already exists", ex))
-                            .onErrorMap(OptimisticLockingFailureException.class,
-                                    ex -> new DomainException(
-                                            "The maintenance order was updated concurrently. Please retry.", ex))
-                            .map(MaintenanceOrderDocumentMapper::toDomain);
                 });
     }
 

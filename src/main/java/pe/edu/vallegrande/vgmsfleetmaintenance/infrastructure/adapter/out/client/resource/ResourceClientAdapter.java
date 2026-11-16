@@ -13,6 +13,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.domain.exception.DomainException;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.ResourceClientPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.client.resource.dto.OperationalResourceDTO;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.client.resource.mapper.ResourceClientMapper;
+import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.exception.custom.UpstreamServiceException;
 import reactor.core.publisher.Mono;
 
 /**
@@ -63,8 +64,11 @@ public class ResourceClientAdapter implements ResourceClientPort {
 
     @Override
     public Mono<Void> validateResourceBelongsToEntity(String resourceId, String entityId, String bearerToken) {
-        if (entityId == null || entityId.isBlank() || resourceId == null || resourceId.isBlank()) {
-            return Mono.empty();
+        if (resourceId == null || resourceId.isBlank()) {
+            return Mono.error(new DomainException("Resource ID is required for validation"));
+        }
+        if (entityId == null || entityId.isBlank()) {
+            return Mono.error(new DomainException("Entity ID is required for resource validation"));
         }
 
         var requestSpec = webClient.get()
@@ -76,21 +80,32 @@ public class ResourceClientAdapter implements ResourceClientPort {
 
         return requestSpec
                 .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, response -> response.createException()
+                        .flatMap(err -> {
+                            log.warn("Resource service rejected validation for resourceId {}: status {}",
+                                    resourceId, response.statusCode().value());
+                            return Mono.error(new DomainException(
+                                    "Operational resource not found or access denied in resource service", err));
+                        }))
+                .onStatus(HttpStatusCode::is5xxServerError, response -> response.createException()
+                        .flatMap(err -> {
+                            log.error("Resource service unavailable during validation: status {}",
+                                    response.statusCode().value());
+                            return Mono.error(new UpstreamServiceException(
+                                    "External resource service is temporarily unavailable", err));
+                        }))
                 .bodyToMono(OperationalResourceDTO.class)
+                .switchIfEmpty(Mono.error(new DomainException("Operational resource record not found")))
                 .flatMap(resource -> {
-                    if (resource != null && resource.getEntityId() != null && !resource.getEntityId().equals(entityId)) {
-                        log.warn("Resource context mismatch: resource {} does not belong to entity {}",
-                                resourceId, entityId);
+                    if (resource.getEntityId() == null || !resource.getEntityId().equals(entityId)) {
+                        log.warn("Resource context mismatch: resource {} belongs to {} but requested by {}",
+                                resourceId, resource.getEntityId(), entityId);
                         return Mono.error(new DomainException("Operational resource does not belong to the caller entity"));
                     }
                     return Mono.empty();
                 })
-                .onErrorResume(DomainException.class, Mono::error)
-                .onErrorResume(err -> {
-                    log.warn("Notice: Resource upstream verification bypassed due to unavailable service. ErrorType: {}",
-                            err.getClass().getSimpleName());
-                    return Mono.empty();
-                })
+                .onErrorMap(e -> !(e instanceof DomainException || e instanceof UpstreamServiceException),
+                        err -> new UpstreamServiceException("Failed to verify resource with external service", err))
                 .then();
     }
 
