@@ -39,48 +39,32 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
     @Override
     public Mono<MaintenanceOrder> findByOrderCode(String orderCode) {
         return TenantScope.current()
-                .flatMap(scope -> {
-                    if (scope.entityId() != null) {
-                        return repository.findByEntityIdAndOrderCode(scope.entityId(), orderCode);
-                    }
-                    if (scope.all()) {
-                        return repository.findByOrderCode(orderCode);
-                    }
-                    return Mono.error(TenantScope.forbidden());
-                })
-                .map(MaintenanceOrderDocumentMapper::toDomain);
+                .flatMap(scope -> repository.findByOrderCode(orderCode)
+                        .filter(doc -> canRead(scope, doc))
+                        .map(MaintenanceOrderDocumentMapper::toDomain));
     }
 
     @Override
     public Flux<MaintenanceOrder> findByResourceId(String resourceId) {
         return TenantScope.current()
-                .flatMapMany(scope -> {
-                    if (scope.entityId() != null) {
-                        return repository.findByEntityIdAndResourceId(scope.entityId(), resourceId);
-                    }
-                    if (scope.all()) {
-                        return repository.findByResourceId(resourceId);
-                    }
-                    return Flux.error(TenantScope.forbidden());
-                })
-                .map(MaintenanceOrderDocumentMapper::toDomain);
+                .flatMapMany(scope -> repository.findByResourceId(resourceId)
+                        .filter(doc -> canRead(scope, doc))
+                        .map(MaintenanceOrderDocumentMapper::toDomain));
     }
 
     @Override
     public Flux<MaintenanceOrder> findByEntityId(String entityId) {
         return TenantScope.current()
                 .flatMapMany(scope -> {
-                    if (scope.entityId() != null) {
-                        if (!scope.entityId().equals(entityId)) {
-                            return Flux.empty();
-                        }
-                        return repository.findByEntityId(entityId);
+                    if (scope.entityId() != null && !scope.entityId().equals(entityId)) {
+                        return Flux.empty();
                     }
-                    if (scope.all()) {
-                        return repository.findByEntityId(entityId);
+                    if (!scope.all() && scope.entityId() == null) {
+                        return Flux.empty();
                     }
-                    return Flux.empty();
+                    return repository.findByEntityId(entityId);
                 })
+                .filter(doc -> canRead(scope, doc))
                 .map(MaintenanceOrderDocumentMapper::toDomain);
     }
 
@@ -96,6 +80,7 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
                     }
                     return Flux.empty();
                 })
+                .filter(doc -> canRead(scope, doc))
                 .map(MaintenanceOrderDocumentMapper::toDomain);
     }
 
@@ -111,6 +96,7 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
                     }
                     return Flux.empty();
                 })
+                .filter(doc -> canRead(scope, doc))
                 .map(MaintenanceOrderDocumentMapper::toDomain);
     }
 
@@ -136,7 +122,8 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
                                 })
                                 .onErrorMap(DuplicateKeyException.class,
                                         ex -> new DomainException(
-                                                "A maintenance order with this code or active status already exists", ex))
+                                                "A maintenance order with this code or active status already exists",
+                                                ex))
                                 .onErrorMap(OptimisticLockingFailureException.class,
                                         ex -> new DomainException(
                                                 "The maintenance order was updated concurrently. Please retry.", ex))
@@ -162,7 +149,8 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
                         return repository.save(document)
                                 .onErrorMap(DuplicateKeyException.class,
                                         ex -> new DomainException(
-                                                "A maintenance order with this code or active status already exists", ex))
+                                                "A maintenance order with this code or active status already exists",
+                                                ex))
                                 .onErrorMap(OptimisticLockingFailureException.class,
                                         ex -> new DomainException(
                                                 "The maintenance order was updated concurrently. Please retry.", ex))

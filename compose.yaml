@@ -9,7 +9,7 @@ services:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:CHANGE_ME_KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:CHANGE_ME_KEYCLOAK_PASSWORD}
     ports:
-      - "8090:8090"
+      - "127.0.0.1:8090:8090"
     mem_limit: 512m
     restart: unless-stopped
     networks:

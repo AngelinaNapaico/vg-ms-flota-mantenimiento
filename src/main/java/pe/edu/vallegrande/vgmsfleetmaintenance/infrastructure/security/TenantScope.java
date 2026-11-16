@@ -18,15 +18,17 @@ import java.util.stream.Collectors;
  * {@code mid}/{@code eid}).
  * 100% in English according to GLOBAL-NAM-EN-001.
  * Business rules:
- * - SUPER_ADMIN/ADMIN has global view and management of all orders and fleets.
- * - MUNICIPALIDAD_ADMIN has global read/audit visibility to supervise fleets
- * and export reports.
- * - With {@code eid} (Entity): views and manages exclusively orders belonging
+ * - SUPER_ADMIN has global cross-tenant access.
+ * - Roles with an entityId (eid) view and manage exclusively orders belonging
  * to their entity.
- * - Users without {@code eid} and not admin/super_admin cannot create or modify
- * maintenance orders.
+ * - Access is isolated strictly per tenant, rejecting unauthorized cross-tenant
+ * operations.
  */
-public record TenantScope(boolean all, String municipalityId, String entityId, Set<String> roles) {
+public record TenantScope(boolean all, String municipalityId, String entityId, String actor, Set<String> roles) {
+
+    public TenantScope(boolean all, String municipalityId, String entityId, Set<String> roles) {
+        this(all, municipalityId, entityId, "ANONYMOUS", roles);
+    }
 
     public static Mono<TenantScope> current() {
         return ReactiveSecurityContextHolder.getContext()
@@ -38,15 +40,27 @@ public record TenantScope(boolean all, String municipalityId, String entityId, S
 
     public static TenantScope from(Authentication auth) {
         if (auth == null) {
-            return new TenantScope(false, null, null, Set.of());
+            return new TenantScope(false, null, null, "ANONYMOUS", Set.of());
         }
         Set<String> roles = auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .map(a -> a.startsWith("ROLE_") ? a.substring(5) : a)
                 .collect(Collectors.toUnmodifiableSet());
         Map<String, Object> claims = auth instanceof JwtAuthenticationToken jwt ? jwt.getTokenAttributes() : Map.of();
-        boolean isGlobalAdmin = roles.contains("SUPER_ADMIN") || roles.contains("ADMIN");
-        return new TenantScope(isGlobalAdmin, text(claims.get("mid")), text(claims.get("eid")), roles);
+        boolean isGlobalAdmin = roles.contains("SUPER_ADMIN");
+
+        String actor = text(claims.get("preferred_username"));
+        if (actor == null) {
+            actor = text(claims.get("sub"));
+        }
+        if (actor == null) {
+            actor = auth.getName();
+        }
+        if (actor == null || actor.isBlank()) {
+            actor = "ANONYMOUS";
+        }
+
+        return new TenantScope(isGlobalAdmin, text(claims.get("mid")), text(claims.get("eid")), actor, roles);
     }
 
     public boolean hasRole(String role) {
@@ -55,8 +69,8 @@ public record TenantScope(boolean all, String municipalityId, String entityId, S
 
     /**
      * Read access for maintenance order belonging to {@code eid}.
-     * Restricted to documents belonging to the user's entityId, or cross-tenant
-     * access exclusively for global administrators without tenant binding.
+     * Restricted strictly to documents matching the caller's entityId,
+     * or global access exclusively for SUPER_ADMIN.
      */
     public boolean canRead(String eid) {
         if (entityId != null) {
@@ -67,14 +81,14 @@ public record TenantScope(boolean all, String municipalityId, String entityId, S
 
     /**
      * Write/Management of orders: only entity operational personnel (or
-     * SUPER_ADMIN/ADMIN).
-     * MUNICIPALIDAD_ADMIN and ANALISTA are strictly read-only supervisory roles.
+     * SUPER_ADMIN).
+     * Supervisory roles without write authority are strictly restricted.
      */
     public boolean canWrite() {
         if (all) {
             return true;
         }
-        if (hasRole("MUNICIPALIDAD_ADMIN") || hasRole("ANALISTA")) {
+        if (hasRole("MUNICIPALIDAD_ADMIN") || hasRole("ANALISTA") || hasRole("CIUDADANO")) {
             return false;
         }
         return entityId != null;

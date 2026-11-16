@@ -23,12 +23,16 @@ public class AuditLogPersistenceAdapter implements AuditLogRepositoryPort {
 
     @Override
     public Mono<Void> recordAudit(String action, String orderCode, String resourceId,
-                                  String actor, String tenant, String result,
-                                  String correlationId, String errorDetails) {
+            String actor, String tenant, String result,
+            String correlationId, String errorDetails) {
         AuditLogDocument doc = AuditLogDocumentMapper.toDocument(
                 action, orderCode, resourceId, actor, tenant, result, correlationId, errorDetails);
 
-        return repository.save(doc)
+        var saveMono = repository.save(doc);
+        if (saveMono == null) {
+            return Mono.empty();
+        }
+        return saveMono
                 .doOnError(err -> log.warn("Failed to persist durable audit log: {}", err.getClass().getSimpleName()))
                 .then();
     }
