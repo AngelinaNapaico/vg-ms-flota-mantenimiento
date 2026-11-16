@@ -26,7 +26,8 @@ import static org.mockito.Mockito.when;
 
 /**
  * Multi-Tenancy Integration Tests.
- * Verifies tenant data isolation between distinct entities and ownership constraints.
+ * Verifies tenant data isolation between distinct entities and ownership
+ * constraints.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
@@ -109,11 +110,11 @@ class MultiTenancyIntegrationTest {
         String originalResource = docB.getResourceId();
 
         String updatePayload = """
-            {
-                "failureReason": "Unauthorized modification attempt",
-                "reportedMileage": 60000
-            }
-        """;
+                    {
+                        "failureReason": "Unauthorized modification attempt",
+                        "reportedMileage": 60000
+                    }
+                """;
 
         webTestClient.put()
                 .uri("/api/v1/maintenance-orders/" + ORDER_B_ID)

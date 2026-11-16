@@ -2,7 +2,9 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
     container_name: vg-keycloak
-    command: start-dev --import-realm
+    profiles:
+      - dev
+    command: start --optimized
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:CHANGE_ME_KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:CHANGE_ME_KEYCLOAK_PASSWORD}
@@ -31,8 +33,6 @@ services:
     expose:
       - "9012"
     mem_limit: 300m
-    depends_on:
-      - keycloak
     restart: unless-stopped
     networks:
       - vg-network

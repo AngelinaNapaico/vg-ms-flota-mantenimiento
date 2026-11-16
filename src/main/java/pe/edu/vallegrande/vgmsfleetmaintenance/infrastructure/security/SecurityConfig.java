@@ -23,8 +23,10 @@ import java.util.stream.Collectors;
 
 /**
  * Reactive security configuration and Keycloak JWT role mapping.
- * Enforces authentication entry points returning 401 Unauthorized for invalid tokens
- * and authorization checks returning 403 Forbidden for insufficient permissions.
+ * Enforces authentication entry points returning 401 Unauthorized for invalid
+ * tokens
+ * and authorization checks returning 403 Forbidden for insufficient
+ * permissions.
  */
 @Configuration
 @EnableWebFluxSecurity

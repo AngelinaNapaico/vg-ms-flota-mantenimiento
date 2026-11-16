@@ -29,7 +29,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
- * Inbound REST controller for managing the lifecycle of fleet maintenance orders.
+ * Inbound REST controller for managing the lifecycle of fleet maintenance
+ * orders.
  * Exposes reactive endpoints for order registration, tracking, updates,
  * and technical discharge.
  */
