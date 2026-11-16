@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
 /**
- * Request DTO for recording technical discharge report and vehicle delivery (STD-075).
+ * Request DTO for recording technical discharge report and vehicle delivery.
  */
 @Data
 @Builder

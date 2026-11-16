@@ -10,8 +10,7 @@ import java.util.Collection;
 
 /**
  * Spring Data Reactive MongoDB repository for maintenance orders.
- * REC-02/03 compliant: extends ReactiveMongoRepository, returns Mono/Flux publishers.
- * TEN-01/02 & SEC-009-A compliant: queries partitioned by entityId and active status.
+ * Provides reactive queries scoped by entity and status.
  */
 @Repository
 public interface MaintenanceOrderRepository extends ReactiveMongoRepository<MaintenanceOrderDocument, String> {

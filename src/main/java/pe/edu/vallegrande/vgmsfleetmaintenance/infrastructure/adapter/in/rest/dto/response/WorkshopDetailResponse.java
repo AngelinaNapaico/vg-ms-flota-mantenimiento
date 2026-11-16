@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 
 /**
  * Boundary Response DTO for workshop assignments.
- * Isolated from domain models according to STD-063.
+ * REST response DTO for workshop assignment details.
  */
 @Data
 @Builder

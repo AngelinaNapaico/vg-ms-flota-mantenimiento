@@ -18,13 +18,9 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 
 /**
- * Secondary Outbound Persistence Adapter for MongoDB with multi-tenancy.
- * Implements MaintenanceOrderRepositoryPort isolating domain from database details.
- * Compliant with:
- * - REC-02/03 & TEN-01/02 & STD-086: Multi-tenant partitioning.
- * - SEC-009-A: Tenant-scoped exists checks for active orders.
- * - SEC-009-B, SEC-020, SEC-021: Strict tenant derivation and rejection of cross-tenant claims.
- * - SEC-022: Optimistic locking and duplicate key handling.
+ * Outbound persistence adapter for MongoDB.
+ * Implements MaintenanceOrderRepositoryPort with tenant isolation,
+ * optimistic locking, and domain-to-document mapping.
  */
 @Component
 @RequiredArgsConstructor
@@ -37,8 +33,7 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
         return TenantScope.current()
                 .flatMap(scope -> repository.findById(id)
                         .filter(doc -> canRead(scope, doc))
-                        .map(MaintenanceOrderDocumentMapper::toDomain)
-                );
+                        .map(MaintenanceOrderDocumentMapper::toDomain));
     }
 
     @Override
@@ -46,8 +41,7 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
         return TenantScope.current()
                 .flatMap(scope -> repository.findByOrderCode(orderCode)
                         .filter(doc -> canRead(scope, doc))
-                        .map(MaintenanceOrderDocumentMapper::toDomain)
-                );
+                        .map(MaintenanceOrderDocumentMapper::toDomain));
     }
 
     @Override
@@ -55,8 +49,7 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
         return TenantScope.current()
                 .flatMapMany(scope -> repository.findByResourceId(resourceId)
                         .filter(doc -> canRead(scope, doc))
-                        .map(MaintenanceOrderDocumentMapper::toDomain)
-                );
+                        .map(MaintenanceOrderDocumentMapper::toDomain));
     }
 
     @Override
@@ -135,10 +128,12 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
                     document.setUpdatedAt(LocalDateTime.now());
 
                     return repository.save(document)
-                            .onErrorMap(DuplicateKeyException.class, ex ->
-                                    new DomainException("A maintenance order with this code or active status already exists", ex))
-                            .onErrorMap(OptimisticLockingFailureException.class, ex ->
-                                    new DomainException("The maintenance order was updated concurrently. Please retry.", ex))
+                            .onErrorMap(DuplicateKeyException.class,
+                                    ex -> new DomainException(
+                                            "A maintenance order with this code or active status already exists", ex))
+                            .onErrorMap(OptimisticLockingFailureException.class,
+                                    ex -> new DomainException(
+                                            "The maintenance order was updated concurrently. Please retry.", ex))
                             .map(MaintenanceOrderDocumentMapper::toDomain);
                 });
     }
@@ -150,7 +145,8 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
                     if (scope.all() || scope.entityId() == null) {
                         return repository.existsByResourceIdAndOrderStatusNotIn(resourceId, statuses);
                     }
-                    return repository.existsByResourceIdAndEntityIdAndOrderStatusNotIn(resourceId, scope.entityId(), statuses);
+                    return repository.existsByResourceIdAndEntityIdAndOrderStatusNotIn(resourceId, scope.entityId(),
+                            statuses);
                 });
     }
 

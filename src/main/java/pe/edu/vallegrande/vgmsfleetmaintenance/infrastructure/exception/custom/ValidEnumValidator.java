@@ -9,7 +9,6 @@ import java.util.stream.Collectors;
 
 /**
  * Constraint validator for @ValidEnum annotation.
- * STD-087 compliant: Located in infrastructure/exception/custom.
  */
 public class ValidEnumValidator implements ConstraintValidator<ValidEnum, String> {
 

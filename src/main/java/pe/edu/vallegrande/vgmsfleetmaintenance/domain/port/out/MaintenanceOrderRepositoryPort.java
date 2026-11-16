@@ -7,8 +7,7 @@ import reactor.core.publisher.Mono;
 import java.util.Collection;
 
 /**
- * Puerto de salida para persistencia desacoplada de órdenes de mantenimiento.
- * Convención en inglés según estándar DatabaseStorage (HEX-02).
+ * Outbound repository port for persistence of maintenance orders.
  */
 public interface MaintenanceOrderRepositoryPort {
 

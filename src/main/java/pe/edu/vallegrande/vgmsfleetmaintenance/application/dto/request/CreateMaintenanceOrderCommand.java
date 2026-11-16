@@ -9,7 +9,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderPriority;
 
 /**
  * Application command DTO for creating a maintenance order.
- * Complies with STD-087 and Hexagonal architecture.
+ * Application command model for initiating a new maintenance order.
  */
 @Data
 @Builder

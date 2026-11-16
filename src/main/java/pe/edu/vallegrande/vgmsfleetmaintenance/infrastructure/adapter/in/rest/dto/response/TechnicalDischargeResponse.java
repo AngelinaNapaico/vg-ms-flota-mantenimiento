@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 
 /**
  * Boundary Response DTO for technical discharge reports.
- * Isolated from domain models according to STD-063.
+ * REST response DTO for technical discharge report details.
  */
 @Data
 @Builder

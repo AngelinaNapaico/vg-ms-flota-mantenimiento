@@ -16,7 +16,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderPriority;
 
 /**
  * DTO para la creación de una nueva orden de mantenimiento.
- * Soporta nombres en inglés y español vía alias JSON para compatibilidad total (STD-075).
+ * Soporta nombres en inglés y español vía alias JSON para compatibilidad total.
  */
 @Data
 @Builder

@@ -9,9 +9,9 @@ import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.*;
 
 /**
- * Explicit JWT decoder configuration ensuring ONLY Keycloak OIDC is accepted.
- * Legacy HMAC tokens or unauthorized providers are strictly rejected (SEC-001).
- * Translates any decoder or network failure into BadCredentialsException (401 Unauthorized).
+ * Reactive JWT decoder configuration for Keycloak OIDC token verification.
+ * Enforces cryptographic signature verification and maps token validation errors
+ * to BadCredentialsException for consistent authentication rejection.
  */
 @Configuration
 public class JwtDecoderConfig {
@@ -30,7 +30,8 @@ public class JwtDecoderConfig {
         OAuth2TokenValidator<Jwt> validator = JwtValidators.createDefaultWithIssuer(issuerUri);
         decoder.setJwtValidator(validator);
         return token -> decoder.decode(token)
-                .onErrorMap(Exception.class, ex -> new BadCredentialsException("Invalid or unverifiable JWT token in production", ex));
+                .onErrorMap(Exception.class,
+                        ex -> new BadCredentialsException("Invalid or unverifiable JWT token in production", ex));
     }
 
     @Bean
@@ -40,22 +41,21 @@ public class JwtDecoderConfig {
         OAuth2TokenValidator<Jwt> validator = JwtValidators.createDefaultWithIssuer(issuerUri);
         decoder.setJwtValidator(validator);
         return token -> decoder.decode(token)
-                .onErrorMap(Exception.class, ex -> new BadCredentialsException("Invalid or unverifiable JWT token", ex));
+                .onErrorMap(Exception.class,
+                        ex -> new BadCredentialsException("Invalid or unverifiable JWT token", ex));
     }
 
     public void validateProductionIssuer() {
         if (issuerUri == null || issuerUri.isBlank()) {
             throw new IllegalStateException(
                     "In production KEYCLOAK_ISSUER_URI is mandatory. " +
-                    "Development tokens, legacy HMAC, or foreign providers are rejected."
-            );
+                            "Development tokens, legacy HMAC, or foreign providers are rejected.");
         }
 
         if (issuerUri.contains("localhost") || issuerUri.contains("127.0.0.1")) {
             throw new IllegalStateException(
                     "Production profile does not allow local issuer (localhost/127.0.0.1). " +
-                    "KEYCLOAK_ISSUER_URI must target production Keycloak instance with HTTPS."
-            );
+                            "KEYCLOAK_ISSUER_URI must target production Keycloak instance with HTTPS.");
         }
     }
 }

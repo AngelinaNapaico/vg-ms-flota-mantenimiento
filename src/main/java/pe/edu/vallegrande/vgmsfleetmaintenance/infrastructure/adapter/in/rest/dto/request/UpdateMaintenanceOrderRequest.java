@@ -15,7 +15,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderPriority;
 /**
  * Request DTO for updating editable header fields of an active maintenance order.
  * Supports dual naming (English and Spanish) via Jackson aliases.
- * STD-075 compliant: Cascading @Valid on embedded workshop detail.
+ * Request DTO for updating editable maintenance order details.
  */
 @Data
 @Builder

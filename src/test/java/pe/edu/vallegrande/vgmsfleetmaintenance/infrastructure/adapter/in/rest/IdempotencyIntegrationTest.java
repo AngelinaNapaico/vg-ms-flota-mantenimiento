@@ -22,7 +22,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * Idempotency & Concurrency Integration Tests.
- * SEC-024-D: Verifies that concurrent attempts or retries to create an active order
+ * Verifies that concurrent attempts or retries to create an active order
  * for the same operational resource are rejected, preventing duplicate active orders.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -55,7 +55,7 @@ class IdempotencyIntegrationTest {
 
     @Test
     @WithMockUser(username = "operator-1", roles = "OPERADOR_ENTIDAD")
-    @DisplayName("SEC-024-D: Intento duplicado de crear orden activa para el mismo recurso debe rechazarse")
+    @DisplayName("Should prevent duplicate active order for same resource")
     void shouldPreventDuplicateActiveOrderForSameResource() {
         String duplicateOrderPayload = """
             {

@@ -1,10 +1,9 @@
 package pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security;
 
 /**
- * Constantes de roles de seguridad para autorizaciones SpEL.
- * SEC-007: Aplica principio de menor privilegio.
- * MUNICIPALIDAD_ADMIN y ANALISTA son roles de solo lectura (supervisores).
- * Escritura reservada a SUPER_ADMIN, ADMIN, ENTIDAD_ADMIN y OPERADOR_ENTIDAD.
+ * Security role constants for method-level SpEL authorization expressions.
+ * Enforces principle of least privilege: supervisory and analytical roles
+ * have read-only access, while mutation operations require operational entity or administrative roles.
  */
 public final class RoleConstants {
 

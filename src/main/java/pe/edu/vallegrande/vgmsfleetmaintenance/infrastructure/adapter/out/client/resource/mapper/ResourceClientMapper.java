@@ -4,9 +4,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.client
 
 /**
  * Mapper for external resource client DTOs.
- * Complies with STD-040, STD-061, STD-087:
- * - Resides in infrastructure/adapter/out/client/resource/mapper/
- * - Connects OperationalResourceDTO with the outbound HTTP adapter workflow.
+ * Prepares payload structures for interaction with the resources microservice.
  */
 public final class ResourceClientMapper {
 

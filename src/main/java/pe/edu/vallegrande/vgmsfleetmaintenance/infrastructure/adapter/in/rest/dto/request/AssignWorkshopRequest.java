@@ -16,7 +16,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * DTO para la asignación de taller externo y presupuesto inicial (STD-075).
+ * DTO para la asignación de taller externo y presupuesto inicial.
  */
 @Data
 @Builder

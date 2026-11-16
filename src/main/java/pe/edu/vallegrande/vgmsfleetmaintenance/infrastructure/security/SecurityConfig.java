@@ -22,10 +22,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Reactive security configuration and Keycloak/DualJWT role mapping.
- * SEC-001, SEC-004, SEC-007, SEC-023-A, SEC-023-B compliant:
- * - 401 Unauthorized on any token validation failure via AuthenticationEntryPoint.
- * - 403 Forbidden on insufficient roles.
+ * Reactive security configuration and Keycloak JWT role mapping.
+ * Enforces authentication entry points returning 401 Unauthorized for invalid tokens
+ * and authorization checks returning 403 Forbidden for insufficient permissions.
  */
 @Configuration
 @EnableWebFluxSecurity

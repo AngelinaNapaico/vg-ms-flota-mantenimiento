@@ -26,7 +26,7 @@ services:
       SERVICES_RECURSOS_URL: http://vg-ms-recursos:9004
       SERVICES_CATALOGO_URL: http://vg-ms-catalogos:9005
       SERVICES_INCIDENTES_URL: http://vg-ms-incidentes:9003
-    # SEC-012: Puerto expuesto internamente en vg-network, sin mapeo directo de host.
+    # Puerto expuesto internamente en vg-network, sin mapeo directo de host.
     # El trafico externo se rutea exclusivamente a traves de vg-ms-api-gateway.
     expose:
       - "9012"

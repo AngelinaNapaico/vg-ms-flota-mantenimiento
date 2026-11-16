@@ -12,10 +12,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderStatus;
 import java.time.LocalDateTime;
 
 /**
- * Aggregate Root del dominio para la gestión del ciclo de vida de mantenimiento
- * de flota.
- * POJO puro 100% en inglés según estándar DatabaseStorage (HEX-01,
- * NOM-01..NOM-03).
+ * Aggregate root representing a fleet maintenance order and its lifecycle.
  */
 @Data
 @Builder

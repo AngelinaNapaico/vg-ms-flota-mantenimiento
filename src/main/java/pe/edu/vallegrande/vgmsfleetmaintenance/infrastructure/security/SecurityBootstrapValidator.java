@@ -9,10 +9,9 @@ import org.springframework.core.env.Environment;
 import java.util.Arrays;
 
 /**
- * Security startup validator guaranteeing that:
- * 1. In PRODUCTION: Only Keycloak OIDC with HTTPS is accepted (rejects localhost, legacy HMAC).
- * 2. In DEVELOPMENT: Allows local Keycloak fallback.
- * SEC-001 & SEC-004 compliant.
+ * Startup validator ensuring environment-appropriate security configurations.
+ * In production profiles, enforces strict external OIDC provider URIs and rejects
+ * development endpoints.
  */
 @Slf4j
 @Configuration

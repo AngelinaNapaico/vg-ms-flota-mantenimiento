@@ -18,8 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
  * Authorization Integration Tests (RBAC).
- * SEC-023-C: Verifies that authenticated users with insufficient permissions receive 403 Forbidden.
- * SEC-007: Verifies least-privilege enforcement (MUNICIPALIDAD_ADMIN is strictly read-only).
+ * Verifies that authenticated users with insufficient permissions receive 403 Forbidden.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
@@ -52,7 +51,7 @@ class AuthorizationIntegrationTest {
 
     @Test
     @WithMockUser(roles = "CIUDADANO")
-    @DisplayName("SEC-023-C: CIUDADANO POST /api/v1/maintenance-orders debe retornar 403 Forbidden")
+    @DisplayName("Should reject post for ciudadano role with 403 Forbidden")
     void shouldRejectPostForCiudadano() {
         webTestClient.post()
                 .uri("/api/v1/maintenance-orders")
@@ -64,7 +63,7 @@ class AuthorizationIntegrationTest {
 
     @Test
     @WithMockUser(roles = "ANALISTA")
-    @DisplayName("SEC-023-C: ANALISTA POST /api/v1/maintenance-orders debe retornar 403 Forbidden")
+    @DisplayName("Should reject post for analista role with 403 Forbidden")
     void shouldRejectPostForAnalista() {
         webTestClient.post()
                 .uri("/api/v1/maintenance-orders")
@@ -76,7 +75,7 @@ class AuthorizationIntegrationTest {
 
     @Test
     @WithMockUser(roles = "MUNICIPALIDAD_ADMIN")
-    @DisplayName("SEC-007: MUNICIPALIDAD_ADMIN POST /api/v1/maintenance-orders debe retornar 403 Forbidden (solo lectura)")
+    @DisplayName("Should reject post for municipalidad admin with 403 Forbidden (read-only supervisor)")
     void shouldRejectPostForMunicipalidadAdmin() {
         webTestClient.post()
                 .uri("/api/v1/maintenance-orders")
@@ -88,7 +87,7 @@ class AuthorizationIntegrationTest {
 
     @Test
     @WithMockUser(roles = "ANALISTA")
-    @DisplayName("SEC-023-C: ANALISTA GET /api/v1/maintenance-orders debe permitirse (no 403)")
+    @DisplayName("Should allow get for analista role")
     void shouldAllowGetForAnalista() {
         webTestClient.get()
                 .uri("/api/v1/maintenance-orders")

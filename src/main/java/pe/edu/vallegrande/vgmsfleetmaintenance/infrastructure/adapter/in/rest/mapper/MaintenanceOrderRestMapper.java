@@ -13,8 +13,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.dt
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.dto.response.WorkshopDetailResponse;
 
 /**
- * Primary Inbound REST Mapper for Fleet Maintenance Orders.
- * HEX-04 & STD-040 & STD-063 compliant: isolates domain models from REST boundaries.
+ * REST mapper translating between domain models and API contract DTOs.
  */
 public final class MaintenanceOrderRestMapper {
 

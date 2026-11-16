@@ -7,7 +7,7 @@ import java.util.Map;
 
 /**
  * Mapper for internal field names to safe, controlled public field names.
- * Prevents internal property/class structure leakage in validation responses (STD-074, STD-077).
+ * Prevents internal property/class structure leakage in validation responses 
  */
 @UtilityClass
 public class FieldNameMapper {

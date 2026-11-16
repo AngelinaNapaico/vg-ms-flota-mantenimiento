@@ -25,8 +25,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * Multi-Tenancy Integration Tests.
- * SEC-024-A: Verifies tenant data isolation between distinct entities.
- * SEC-024-B: Verifies ownership constraints and prevention of cross-tenant mutations.
+ * Verifies tenant data isolation between distinct entities and ownership constraints.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
@@ -86,7 +85,7 @@ class MultiTenancyIntegrationTest {
 
     @Test
     @WithMockUser(username = "operator-a", roles = "OPERADOR_ENTIDAD")
-    @DisplayName("SEC-024-A: Operador sin acceso a entidad B recibe rechazo (no 200 OK)")
+    @DisplayName("Should reject order access across different tenants")
     void shouldNotExposeEntityBOrderToEntityA() {
         webTestClient.get()
                 .uri("/api/v1/maintenance-orders/" + ORDER_B_ID)
@@ -96,7 +95,7 @@ class MultiTenancyIntegrationTest {
 
     @Test
     @WithMockUser(username = "operator-a", roles = "OPERADOR_ENTIDAD")
-    @DisplayName("SEC-024-B: Operador no puede mutar orden de otra entidad")
+    @DisplayName("Should reject order mutation across different tenants")
     void shouldRejectMutationAcrossEntities() {
         String updatePayload = """
             {
@@ -115,7 +114,7 @@ class MultiTenancyIntegrationTest {
 
     @Test
     @WithMockUser(username = "super-admin", roles = "SUPER_ADMIN")
-    @DisplayName("SEC-024-A: SUPER_ADMIN tiene acceso global autorizado")
+    @DisplayName("Should allow super admin global access across tenants")
     void shouldAllowSuperAdminAccess() {
         webTestClient.get()
                 .uri("/api/v1/maintenance-orders/" + ORDER_A_ID)

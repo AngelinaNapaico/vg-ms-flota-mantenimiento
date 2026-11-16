@@ -4,7 +4,7 @@ import lombok.experimental.UtilityClass;
 
 /**
  * Mapper from Bean Validation internal messages to safe, controlled public messages.
- * Prevents internal configuration and regex pattern leakage (STD-074, STD-077).
+ * Prevents internal configuration and regex pattern leakage 
  */
 @UtilityClass
 public class ValidationMessageMapper {

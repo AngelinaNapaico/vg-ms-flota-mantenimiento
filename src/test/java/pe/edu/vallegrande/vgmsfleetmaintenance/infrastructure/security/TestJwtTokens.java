@@ -9,11 +9,7 @@ import java.security.PrivateKey;
 import java.util.Date;
 
 /**
- * Test JWT token fixtures for offline security integration testing.
- * SEC-023-A, SEC-023-B compliant:
- * - Expired token with valid RS256 signature.
- * - Token with untrusted issuer.
- * - Malformed tokens (missing signature, corrupted payload).
+ * Test helper for generating cryptographic RSA test tokens.
  */
 public final class TestJwtTokens {
 

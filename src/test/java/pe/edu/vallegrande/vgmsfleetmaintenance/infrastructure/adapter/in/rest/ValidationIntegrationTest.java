@@ -16,7 +16,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persis
 
 /**
  * Validation Integration Tests.
- * SEC-024-C: Verifies input validation rejection against manipulated payloads,
+ * Verifies input validation rejection against manipulated payloads,
  * returning HTTP 422 Unprocessable Entity.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -38,7 +38,7 @@ class ValidationIntegrationTest {
 
     @Test
     @WithMockUser(roles = "OPERADOR_ENTIDAD")
-    @DisplayName("SEC-024-C: Payload con resourceId vacio debe retornar 422 Unprocessable Entity")
+    @DisplayName("Should return 422 when resourceId is blank")
     void shouldReturn422WhenResourceIdIsBlank() {
         String invalidPayload = """
             {
@@ -61,7 +61,7 @@ class ValidationIntegrationTest {
 
     @Test
     @WithMockUser(roles = "OPERADOR_ENTIDAD")
-    @DisplayName("SEC-024-C: Payload con kilometraje negativo debe retornar 422 Unprocessable Entity")
+    @DisplayName("Should return 422 when mileage is negative")
     void shouldReturn422WhenMileageIsNegative() {
         String invalidPayload = """
             {

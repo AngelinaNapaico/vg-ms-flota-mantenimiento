@@ -7,7 +7,6 @@ import java.lang.annotation.*;
 
 /**
  * Custom validation annotation for validating enum values represented as Strings.
- * STD-087 compliant: Located in infrastructure/exception/custom.
  */
 @Target({ElementType.FIELD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)

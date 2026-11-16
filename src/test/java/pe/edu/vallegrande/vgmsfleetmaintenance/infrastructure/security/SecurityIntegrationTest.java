@@ -13,9 +13,8 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.ResourceClientPor
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.repository.MaintenanceOrderRepository;
 
 /**
- * Security Integration Tests for Fleet Maintenance Microservice.
- * SEC-023-A: Tests protected endpoints without token return 401 Unauthorized.
- * SEC-023-B: Tests expired tokens or incorrect issuer return 401 Unauthorized.
+ * Authentication Integration Tests.
+ * Verifies authentication rejection with 401 Unauthorized for missing, expired or invalid tokens.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
@@ -47,11 +46,10 @@ class SecurityIntegrationTest {
     """;
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // SEC-023-A: Solicitudes sin token (401 Unauthorized)
-    // ═══════════════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("SEC-023-A: GET /api/v1/maintenance-orders sin token debe retornar 401")
+    @DisplayName("Should return 401 for GET without token")
     void shouldReturn401WhenListingWithoutToken() {
         webTestClient.get()
                 .uri("/api/v1/maintenance-orders")
@@ -60,7 +58,7 @@ class SecurityIntegrationTest {
     }
 
     @Test
-    @DisplayName("SEC-023-A: POST /api/v1/maintenance-orders sin token debe retornar 401")
+    @DisplayName("Should return 401 for POST without token")
     void shouldReturn401WhenCreatingWithoutToken() {
         webTestClient.post()
                 .uri("/api/v1/maintenance-orders")
@@ -71,7 +69,7 @@ class SecurityIntegrationTest {
     }
 
     @Test
-    @DisplayName("SEC-023-A: PUT /api/v1/maintenance-orders/{id} sin token debe retornar 401")
+    @DisplayName("Should return 401 for PUT without token")
     void shouldReturn401WhenUpdatingWithoutToken() {
         webTestClient.put()
                 .uri("/api/v1/maintenance-orders/65f1a2b3c4d5e6f7a8b9c0d1")
@@ -82,11 +80,10 @@ class SecurityIntegrationTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // SEC-023-B: Tokens expirados, emisor incorrecto o malformados (401 Unauthorized)
-    // ═══════════════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("SEC-023-B: GET con token expirado debe retornar 401")
+    @DisplayName("Should return 401 for GET with expired token")
     void shouldReturn401WithExpiredToken() {
         webTestClient.get()
                 .uri("/api/v1/maintenance-orders")
@@ -96,7 +93,7 @@ class SecurityIntegrationTest {
     }
 
     @Test
-    @DisplayName("SEC-023-B: GET con issuer incorrecto debe retornar 401")
+    @DisplayName("Should return 401 for GET with incorrect issuer")
     void shouldReturn401WithWrongIssuer() {
         webTestClient.get()
                 .uri("/api/v1/maintenance-orders")
@@ -106,7 +103,7 @@ class SecurityIntegrationTest {
     }
 
     @Test
-    @DisplayName("SEC-023-B: GET con token malformado debe retornar 401")
+    @DisplayName("Should return 401 for GET with malformed token")
     void shouldReturn401WithMalformedToken() {
         webTestClient.get()
                 .uri("/api/v1/maintenance-orders")
@@ -116,7 +113,7 @@ class SecurityIntegrationTest {
     }
 
     @Test
-    @DisplayName("SEC-023-B: GET con token sin firma debe retornar 401")
+    @DisplayName("Should return 401 for GET with unsigned token")
     void shouldReturn401WithUnsignedToken() {
         webTestClient.get()
                 .uri("/api/v1/maintenance-orders")

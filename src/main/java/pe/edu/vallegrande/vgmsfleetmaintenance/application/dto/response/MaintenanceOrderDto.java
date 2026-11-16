@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 
 /**
  * Application response DTO for maintenance order.
- * Complies with STD-087 and Hexagonal architecture.
+ * Application data transfer object representing maintenance order details.
  */
 @Data
 @Builder

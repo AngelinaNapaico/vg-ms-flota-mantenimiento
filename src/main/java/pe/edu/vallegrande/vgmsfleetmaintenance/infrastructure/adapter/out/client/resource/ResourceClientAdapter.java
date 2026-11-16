@@ -13,77 +13,94 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.client
 import reactor.core.publisher.Mono;
 
 /**
- * Secondary Outbound WebClient Adapter for vg-ms-recursos microservice.
- * Implements ResourceClientPort with Bearer token propagation and technical
- * error translation (STD-061, STD-072, STD-074, STD-077, STD-087).
+ * Outbound WebClient adapter communicating with the external resources microservice.
+ * Propagates authorization tokens and handles service-to-service communication.
  */
 @Slf4j
 @Component
 public class ResourceClientAdapter implements ResourceClientPort {
 
-    private final WebClient webClient;
+        private final WebClient webClient;
 
-    public ResourceClientAdapter(
-            WebClient.Builder webClientBuilder,
-            @Value("${services.resource.url:${services.recursos.url:http://localhost:9004}}") String resourceServiceUrl) {
-        this.webClient = webClientBuilder
-                .baseUrl(resourceServiceUrl + "/api/v1/resources")
-                .build();
-    }
+        public ResourceClientAdapter(
+                        WebClient.Builder webClientBuilder,
+                        @Value("${services.resource.url:${services.recursos.url:http://localhost:9004}}") String resourceServiceUrl) {
+                this.webClient = webClientBuilder
+                                .baseUrl(resourceServiceUrl + "/api/v1/resources")
+                                .build();
+        }
 
-    @Override
-    public Mono<Void> disableResourceForMaintenance(String resourceId, String bearerToken) {
-        OperationalResourceDTO payload = ResourceClientMapper.toDTO(resourceId, "EN_MANTENIMIENTO");
-        log.info("Requesting status change to {} for resource {}", payload.getAvailability(), resourceId);
+        @Override
+        public Mono<Void> disableResourceForMaintenance(String resourceId, String bearerToken) {
+                OperationalResourceDTO payload = ResourceClientMapper.toDTO(resourceId, "EN_MANTENIMIENTO");
+                log.info("Requesting status change to {} for resource {}", payload.getAvailability(), resourceId);
 
-        return webClient.patch()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/{id}/availability")
-                        .queryParam("availability", payload.getAvailability())
-                        .build(resourceId))
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + bearerToken)
-                .retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, response -> response.createException()
-                        .flatMap(err -> {
-                            log.warn("Resource service rejected operation with status {}", response.statusCode().value());
-                            return Mono.error(new DomainException("External resource service rejected the operation", err));
-                        }))
-                .onStatus(HttpStatusCode::is5xxServerError, response -> response.createException()
-                        .flatMap(err -> {
-                            log.error("Resource service unavailable with status {}", response.statusCode().value());
-                            return Mono.error(new DomainException("External resource service is temporarily unavailable", err));
-                        }))
-                .toBodilessEntity()
-                .doOnSuccess(entity -> log.info("Resource {} marked {} successfully", resourceId, payload.getAvailability()))
-                .doOnError(err -> log.warn("Controlled log: unable to update availability in resource service for {}", resourceId))
-                .then();
-    }
+                return webClient.patch()
+                                .uri(uriBuilder -> uriBuilder
+                                                .path("/{id}/availability")
+                                                .queryParam("availability", payload.getAvailability())
+                                                .build(resourceId))
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + bearerToken)
+                                .retrieve()
+                                .onStatus(HttpStatusCode::is4xxClientError, response -> response.createException()
+                                                .flatMap(err -> {
+                                                        log.warn("Resource service rejected operation with status {}",
+                                                                        response.statusCode().value());
+                                                        return Mono.error(new DomainException(
+                                                                        "External resource service rejected the operation",
+                                                                        err));
+                                                }))
+                                .onStatus(HttpStatusCode::is5xxServerError, response -> response.createException()
+                                                .flatMap(err -> {
+                                                        log.error("Resource service unavailable with status {}",
+                                                                        response.statusCode().value());
+                                                        return Mono.error(new DomainException(
+                                                                        "External resource service is temporarily unavailable",
+                                                                        err));
+                                                }))
+                                .toBodilessEntity()
+                                .doOnSuccess(entity -> log.info("Resource {} marked {} successfully", resourceId,
+                                                payload.getAvailability()))
+                                .doOnError(err -> log.warn(
+                                                "Controlled log: unable to update availability in resource service for {}",
+                                                resourceId))
+                                .then();
+        }
 
-    @Override
-    public Mono<Void> enableResourceToAvailable(String resourceId, String bearerToken) {
-        OperationalResourceDTO payload = ResourceClientMapper.toDTO(resourceId, "DISPONIBLE");
-        log.info("Requesting status change to {} for resource {}", payload.getAvailability(), resourceId);
+        @Override
+        public Mono<Void> enableResourceToAvailable(String resourceId, String bearerToken) {
+                OperationalResourceDTO payload = ResourceClientMapper.toDTO(resourceId, "DISPONIBLE");
+                log.info("Requesting status change to {} for resource {}", payload.getAvailability(), resourceId);
 
-        return webClient.patch()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/{id}/availability")
-                        .queryParam("availability", payload.getAvailability())
-                        .build(resourceId))
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + bearerToken)
-                .retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, response -> response.createException()
-                        .flatMap(err -> {
-                            log.warn("Resource service rejected operation with status {}", response.statusCode().value());
-                            return Mono.error(new DomainException("External resource service rejected the operation", err));
-                        }))
-                .onStatus(HttpStatusCode::is5xxServerError, response -> response.createException()
-                        .flatMap(err -> {
-                            log.error("Resource service unavailable with status {}", response.statusCode().value());
-                            return Mono.error(new DomainException("External resource service is temporarily unavailable", err));
-                        }))
-                .toBodilessEntity()
-                .doOnSuccess(entity -> log.info("Resource {} restored to {} successfully", resourceId, payload.getAvailability()))
-                .doOnError(err -> log.warn("Controlled log: unable to restore availability in resource service for {}", resourceId))
-                .then();
-    }
+                return webClient.patch()
+                                .uri(uriBuilder -> uriBuilder
+                                                .path("/{id}/availability")
+                                                .queryParam("availability", payload.getAvailability())
+                                                .build(resourceId))
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + bearerToken)
+                                .retrieve()
+                                .onStatus(HttpStatusCode::is4xxClientError, response -> response.createException()
+                                                .flatMap(err -> {
+                                                        log.warn("Resource service rejected operation with status {}",
+                                                                        response.statusCode().value());
+                                                        return Mono.error(new DomainException(
+                                                                        "External resource service rejected the operation",
+                                                                        err));
+                                                }))
+                                .onStatus(HttpStatusCode::is5xxServerError, response -> response.createException()
+                                                .flatMap(err -> {
+                                                        log.error("Resource service unavailable with status {}",
+                                                                        response.statusCode().value());
+                                                        return Mono.error(new DomainException(
+                                                                        "External resource service is temporarily unavailable",
+                                                                        err));
+                                                }))
+                                .toBodilessEntity()
+                                .doOnSuccess(entity -> log.info("Resource {} restored to {} successfully", resourceId,
+                                                payload.getAvailability()))
+                                .doOnError(err -> log.warn(
+                                                "Controlled log: unable to restore availability in resource service for {}",
+                                                resourceId))
+                                .then();
+        }
 }

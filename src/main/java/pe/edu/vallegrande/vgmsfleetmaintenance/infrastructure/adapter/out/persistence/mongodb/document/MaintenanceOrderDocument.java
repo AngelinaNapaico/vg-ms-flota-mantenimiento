@@ -17,14 +17,9 @@ import org.springframework.data.mongodb.core.mapping.Field;
 import java.time.LocalDateTime;
 
 /**
- * MongoDB document entity for collection "maintenance_orders".
- * Strictly in English and compliant with DatabaseStorage & Security criteria:
- * - HEX-01/03: Isolated inside infrastructure persistence adapter.
- * - NOM-01: Collection name in lowercase English plural ("maintenance_orders").
- * - NOM-02: BSON document fields mapped in camelCase English.
- * - TEN-01/02 & SEC-009-C: Compound index ('entityId', 'orderCode') enforcing multi-tenant uniqueness.
- * - SEC-016 & SEC-022: Active resource compound index and @Version optimistic locking to avoid race conditions.
- * - TEN-04: UTC audit timestamps (createdAt, updatedAt).
+ * MongoDB document entity representing the "maintenance_orders" collection.
+ * Includes tenant compound index, optimistic locking versioning,
+ * and lifecycle tracking fields.
  */
 @Data
 @Builder

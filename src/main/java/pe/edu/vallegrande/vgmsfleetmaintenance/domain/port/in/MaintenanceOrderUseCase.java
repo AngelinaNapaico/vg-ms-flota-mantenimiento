@@ -8,9 +8,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
- * Inbound port (casos de uso) para el ciclo de mantenimiento de flota.
- * HEX-02, STD-022 & STD-033: Dominio puro nombrado como UseCase, libre de DTOs
- * e infraestructura.
+ * Inbound port defining use case operations for the fleet maintenance lifecycle.
  */
 public interface MaintenanceOrderUseCase {
 

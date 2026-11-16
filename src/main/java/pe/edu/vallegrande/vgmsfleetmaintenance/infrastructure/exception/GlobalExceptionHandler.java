@@ -22,11 +22,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Centralized Global Exception Handler.
- * Fully compliant with STD-048, STD-073, STD-074, STD-077, SEC-017, SEC-018:
- * - SEC-017: Differentiates 401 (Auth), 403 (Access Denied), 404 (Not Found), 422 (Validation/Unprocessable), 409 (Conflict).
- * - SEC-018: Sanitizes logs by recording only exception type and minimal safe context without leaking stack traces or sensitive data.
- * - Standard uniform JSON error envelope.
+ * Centralized global exception handler for REST controllers.
+ * Formats uniform error responses and ensures secure log sanitization
+ * by recording only safe diagnostic context without exposing internal traces.
  */
 @Slf4j
 @RestControllerAdvice
@@ -110,7 +108,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResponseStatusException.class)
     public Mono<ResponseEntity<Map<String, Object>>> handleResponseStatus(ResponseStatusException ex) {
-        log.warn("Response status error - status: {}, type: {}", ex.getStatusCode().value(), ex.getClass().getSimpleName());
+        log.warn("Response status error - status: {}, type: {}", ex.getStatusCode().value(),
+                ex.getClass().getSimpleName());
         return Mono.just(buildResponse(
                 HttpStatus.resolve(ex.getStatusCode().value()),
                 "Resource Error",

@@ -12,7 +12,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persis
 
 /**
  * Bidirectional mapper between Domain Model and Persistence Document for MongoDB.
- * STD-040 & HEX-04 compliant: isolates domain models from database document representations.
+ * Translates between domain entity representations and database document models.
  */
 public final class MaintenanceOrderDocumentMapper {
 

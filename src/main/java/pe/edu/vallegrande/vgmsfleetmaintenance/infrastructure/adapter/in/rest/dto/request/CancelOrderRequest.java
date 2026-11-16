@@ -11,7 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Request DTO for substantiated cancellation of a maintenance order (STD-075).
+ * Request DTO for substantiated cancellation of a maintenance order.
  */
 @Data
 @Builder
