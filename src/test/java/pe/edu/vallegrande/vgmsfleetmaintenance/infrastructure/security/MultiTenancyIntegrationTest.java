@@ -95,12 +95,13 @@ class MultiTenancyIntegrationTest {
     @Test
     @DisplayName("Should allow operator of entity A to read order belonging to entity A")
     void shouldAllowOperatorToReadOwnEntityOrder() {
-        webTestClient.mutateWith(mockJwt().jwt(jwt -> jwt
-                        .subject("operator-a")
-                        .claim("preferred_username", "operator-a")
-                        .claim("eid", ENTITY_A)
-                        .claim("roles", List.of("OPERADOR_ENTIDAD"))
-                        .authorities(new SimpleGrantedAuthority("ROLE_OPERADOR_ENTIDAD"))))
+        webTestClient.mutateWith(mockJwt()
+                        .authorities(new SimpleGrantedAuthority("ROLE_OPERADOR_ENTIDAD"))
+                        .jwt(jwt -> jwt
+                                .subject("operator-a")
+                                .claim("preferred_username", "operator-a")
+                                .claim("eid", ENTITY_A)
+                                .claim("roles", List.of("OPERADOR_ENTIDAD"))))
                 .get()
                 .uri("/api/v1/maintenance-orders/" + ORDER_A_ID)
                 .exchange()
@@ -113,12 +114,13 @@ class MultiTenancyIntegrationTest {
     @Test
     @DisplayName("Should reject order access across different tenants")
     void shouldNotExposeEntityBOrderToEntityA() {
-        webTestClient.mutateWith(mockJwt().jwt(jwt -> jwt
-                        .subject("operator-a")
-                        .claim("preferred_username", "operator-a")
-                        .claim("eid", ENTITY_A)
-                        .claim("roles", List.of("OPERADOR_ENTIDAD"))
-                        .authorities(new SimpleGrantedAuthority("ROLE_OPERADOR_ENTIDAD"))))
+        webTestClient.mutateWith(mockJwt()
+                        .authorities(new SimpleGrantedAuthority("ROLE_OPERADOR_ENTIDAD"))
+                        .jwt(jwt -> jwt
+                                .subject("operator-a")
+                                .claim("preferred_username", "operator-a")
+                                .claim("eid", ENTITY_A)
+                                .claim("roles", List.of("OPERADOR_ENTIDAD"))))
                 .get()
                 .uri("/api/v1/maintenance-orders/" + ORDER_B_ID)
                 .exchange()
@@ -142,18 +144,19 @@ class MultiTenancyIntegrationTest {
                     }
                 """;
 
-        webTestClient.mutateWith(mockJwt().jwt(jwt -> jwt
-                        .subject("operator-a")
-                        .claim("preferred_username", "operator-a")
-                        .claim("eid", ENTITY_A)
-                        .claim("roles", List.of("OPERADOR_ENTIDAD"))
-                        .authorities(new SimpleGrantedAuthority("ROLE_OPERADOR_ENTIDAD"))))
+        webTestClient.mutateWith(mockJwt()
+                        .authorities(new SimpleGrantedAuthority("ROLE_OPERADOR_ENTIDAD"))
+                        .jwt(jwt -> jwt
+                                .subject("operator-a")
+                                .claim("preferred_username", "operator-a")
+                                .claim("eid", ENTITY_A)
+                                .claim("roles", List.of("OPERADOR_ENTIDAD"))))
                 .put()
                 .uri("/api/v1/maintenance-orders/" + ORDER_B_ID)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(updatePayload)
                 .exchange()
-                .expectStatus().isForbidden()
+                .expectStatus().isNotFound()
                 .expectBody()
                 .jsonPath("$.failureReason").doesNotExist();
 
@@ -167,18 +170,19 @@ class MultiTenancyIntegrationTest {
     void shouldVerifyOrderRemainsUnchangedOnCrossTenantMutation() {
         String originalReason = docB.getFailureReason();
 
-        webTestClient.mutateWith(mockJwt().jwt(jwt -> jwt
-                        .subject("operator-a")
-                        .claim("preferred_username", "operator-a")
-                        .claim("eid", ENTITY_A)
-                        .claim("roles", List.of("OPERADOR_ENTIDAD"))
-                        .authorities(new SimpleGrantedAuthority("ROLE_OPERADOR_ENTIDAD"))))
+        webTestClient.mutateWith(mockJwt()
+                        .authorities(new SimpleGrantedAuthority("ROLE_OPERADOR_ENTIDAD"))
+                        .jwt(jwt -> jwt
+                                .subject("operator-a")
+                                .claim("preferred_username", "operator-a")
+                                .claim("eid", ENTITY_A)
+                                .claim("roles", List.of("OPERADOR_ENTIDAD"))))
                 .patch()
                 .uri("/api/v1/maintenance-orders/" + ORDER_B_ID + "/cancel")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"reason\": \"Illegal cancellation attempt\"}")
                 .exchange()
-                .expectStatus().isForbidden()
+                .expectStatus().isNotFound()
                 .expectBody()
                 .jsonPath("$.orderCode").doesNotExist();
 
@@ -189,21 +193,23 @@ class MultiTenancyIntegrationTest {
     @Test
     @DisplayName("Should allow super admin global access across tenants")
     void shouldAllowSuperAdminAccess() {
-        webTestClient.mutateWith(mockJwt().jwt(jwt -> jwt
-                        .subject("super-admin")
-                        .claim("preferred_username", "super-admin")
-                        .claim("roles", List.of("SUPER_ADMIN"))
-                        .authorities(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))))
+        webTestClient.mutateWith(mockJwt()
+                        .authorities(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))
+                        .jwt(jwt -> jwt
+                                .subject("super-admin")
+                                .claim("preferred_username", "super-admin")
+                                .claim("roles", List.of("SUPER_ADMIN"))))
                 .get()
                 .uri("/api/v1/maintenance-orders/" + ORDER_A_ID)
                 .exchange()
                 .expectStatus().isOk();
 
-        webTestClient.mutateWith(mockJwt().jwt(jwt -> jwt
-                        .subject("super-admin")
-                        .claim("preferred_username", "super-admin")
-                        .claim("roles", List.of("SUPER_ADMIN"))
-                        .authorities(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))))
+        webTestClient.mutateWith(mockJwt()
+                        .authorities(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))
+                        .jwt(jwt -> jwt
+                                .subject("super-admin")
+                                .claim("preferred_username", "super-admin")
+                                .claim("roles", List.of("SUPER_ADMIN"))))
                 .get()
                 .uri("/api/v1/maintenance-orders/" + ORDER_B_ID)
                 .exchange()

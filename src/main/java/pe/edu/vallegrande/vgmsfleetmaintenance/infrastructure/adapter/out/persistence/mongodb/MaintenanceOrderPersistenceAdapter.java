@@ -62,9 +62,9 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
                     if (!scope.all() && scope.entityId() == null) {
                         return Flux.empty();
                     }
-                    return repository.findByEntityId(entityId);
+                    return repository.findByEntityId(entityId)
+                            .filter(doc -> canRead(scope, doc));
                 })
-                .filter(doc -> canRead(scope, doc))
                 .map(MaintenanceOrderDocumentMapper::toDomain);
     }
 
@@ -73,14 +73,15 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
         return TenantScope.current()
                 .flatMapMany(scope -> {
                     if (scope.entityId() != null) {
-                        return repository.findByEntityIdAndOrderStatus(scope.entityId(), orderStatus);
+                        return repository.findByEntityIdAndOrderStatus(scope.entityId(), orderStatus)
+                                .filter(doc -> canRead(scope, doc));
                     }
                     if (scope.all()) {
-                        return repository.findByOrderStatus(orderStatus);
+                        return repository.findByOrderStatus(orderStatus)
+                                .filter(doc -> canRead(scope, doc));
                     }
                     return Flux.empty();
                 })
-                .filter(doc -> canRead(scope, doc))
                 .map(MaintenanceOrderDocumentMapper::toDomain);
     }
 
@@ -89,14 +90,15 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
         return TenantScope.current()
                 .flatMapMany(scope -> {
                     if (scope.entityId() != null) {
-                        return repository.findByEntityId(scope.entityId());
+                        return repository.findByEntityId(scope.entityId())
+                                .filter(doc -> canRead(scope, doc));
                     }
                     if (scope.all()) {
-                        return repository.findAll();
+                        return repository.findAll()
+                                .filter(doc -> canRead(scope, doc));
                     }
                     return Flux.empty();
                 })
-                .filter(doc -> canRead(scope, doc))
                 .map(MaintenanceOrderDocumentMapper::toDomain);
     }
 

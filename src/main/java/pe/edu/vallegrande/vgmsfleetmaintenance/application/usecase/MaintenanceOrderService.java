@@ -58,18 +58,18 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
     }
 
     @Override
-    public Mono<MaintenanceOrder> findByOrderCode(String orderCode) {
-        return repositoryPort.findByOrderCode(orderCode)
-                .switchIfEmpty(Mono.error(new DomainException("Maintenance order not found with code: " + orderCode)));
+    public Mono<MaintenanceOrder> findByCode(String code) {
+        return repositoryPort.findByOrderCode(code)
+                .switchIfEmpty(Mono.error(new DomainException("Maintenance order not found with code: " + code)));
     }
 
     @Override
-    public Flux<MaintenanceOrder> findByResourceId(String resourceId) {
+    public Flux<MaintenanceOrder> findByResource(String resourceId) {
         return repositoryPort.findByResourceId(resourceId);
     }
 
     @Override
-    public Flux<MaintenanceOrder> findByEntityId(String entityId) {
+    public Flux<MaintenanceOrder> findByEntity(String entityId) {
         return repositoryPort.findByEntityId(entityId);
     }
 
