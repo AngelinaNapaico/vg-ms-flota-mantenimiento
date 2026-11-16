@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
@@ -17,12 +18,12 @@ import java.time.LocalDateTime;
 
 /**
  * MongoDB document entity for collection "maintenance_orders".
- * Strictly in English and compliant with DatabaseStorage criteria:
+ * Strictly in English and compliant with DatabaseStorage & Security criteria:
  * - HEX-01/03: Isolated inside infrastructure persistence adapter.
  * - NOM-01: Collection name in lowercase English plural ("maintenance_orders").
- * - NOM-02: BSON document fields mapped in camelCase English (matching IncidentDocument standard).
- * - TEN-01/02: Indexed entityId for multi-tenancy isolation.
- * - TEN-03: Soft delete flags (status, active).
+ * - NOM-02: BSON document fields mapped in camelCase English.
+ * - TEN-01/02 & SEC-009-C: Compound index ('entityId', 'orderCode') enforcing multi-tenant uniqueness.
+ * - SEC-016 & SEC-022: Active resource compound index and @Version optimistic locking to avoid race conditions.
  * - TEN-04: UTC audit timestamps (createdAt, updatedAt).
  */
 @Data
@@ -31,6 +32,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Document(collection = "maintenance_orders")
 @CompoundIndexes({
+        @CompoundIndex(name = "idx_entity_order_code", def = "{'entityId': 1, 'orderCode': 1}", unique = true),
         @CompoundIndex(name = "idx_entity_status", def = "{'entityId': 1, 'orderStatus': 1}"),
         @CompoundIndex(name = "idx_resource_status", def = "{'resourceId': 1, 'orderStatus': 1}")
 })
@@ -39,7 +41,7 @@ public class MaintenanceOrderDocument {
     @Id
     private String id;
 
-    @Indexed(unique = true)
+    @Indexed
     @Field("orderCode")
     private String orderCode;
 
@@ -91,6 +93,10 @@ public class MaintenanceOrderDocument {
 
     @Field("active")
     private Boolean active;
+
+    @Version
+    @Field("version")
+    private Long version;
 
     @CreatedDate
     @Field("createdAt")

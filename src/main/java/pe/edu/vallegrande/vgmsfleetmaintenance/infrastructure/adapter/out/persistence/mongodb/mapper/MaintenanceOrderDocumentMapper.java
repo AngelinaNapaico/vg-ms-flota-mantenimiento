@@ -90,6 +90,7 @@ public final class MaintenanceOrderDocumentMapper {
                 .technicalDischargeReport(toDomain(document.getTechnicalDischargeReport()))
                 .remarks(document.getRemarks())
                 .status(document.getStatus())
+                .version(document.getVersion())
                 .createdAt(document.getCreatedAt())
                 .updatedAt(document.getUpdatedAt())
                 .build();
@@ -117,6 +118,7 @@ public final class MaintenanceOrderDocumentMapper {
                 .technicalDischargeReport(toDocument(order.getTechnicalDischargeReport()))
                 .remarks(order.getRemarks())
                 .status(order.getStatus())
+                .version(order.getVersion())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();

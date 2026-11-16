@@ -1,0 +1,43 @@
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: vg-keycloak
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:CHANGE_ME_KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:CHANGE_ME_KEYCLOAK_PASSWORD}
+    ports:
+      - "8090:8090"
+    mem_limit: 512m
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  vg-ms-fleetmaintenance:
+    build: .
+    image: carlosguerrero11/vg-ms-fleet-maintenance:1.0
+    container_name: vg-ms-fleetmaintenance
+    environment:
+      SERVER_PORT: 9012
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATA_MONGODB_URI: ${SPRING_DATA_MONGODB_URI:mongodb+srv://${MONGODB_USER:CHANGE_ME_MONGODB_USER}:${MONGODB_PASSWORD:CHANGE_ME_MONGODB_PASSWORD}@${MONGODB_HOST:localhost}/${MONGO_FLEET_DATABASE:db_fleet}}
+      KEYCLOAK_ISSUER_URI: http://keycloak:8090/realms/PRS
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8090/realms/PRS/protocol/openid-connect/certs
+      SERVICES_RECURSOS_URL: http://vg-ms-recursos:9004
+      SERVICES_CATALOGO_URL: http://vg-ms-catalogos:9005
+      SERVICES_INCIDENTES_URL: http://vg-ms-incidentes:9003
+    # SEC-012: Puerto expuesto internamente en vg-network, sin mapeo directo de host.
+    # El trafico externo se rutea exclusivamente a traves de vg-ms-api-gateway.
+    expose:
+      - "9012"
+    mem_limit: 300m
+    depends_on:
+      - keycloak
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+networks:
+  vg-network:
+    name: vg-network
+    driver: bridge

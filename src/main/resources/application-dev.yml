@@ -1,8 +1,16 @@
 # Configuración para entorno de Desarrollo (dev)
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:${KEYCLOAK_URL:http://localhost:8090}/realms/PRS}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:${KEYCLOAK_URL:http://localhost:8090}/realms/PRS/protocol/openid-connect/certs}
+
 logging:
   level:
     root: INFO
-    pe.edu.vallegrande.caneteseguro.fleet: DEBUG
+    pe.edu.vallegrande.vgmsfleetmaintenance: DEBUG
     org.springframework.data.mongodb: DEBUG
 
 management:

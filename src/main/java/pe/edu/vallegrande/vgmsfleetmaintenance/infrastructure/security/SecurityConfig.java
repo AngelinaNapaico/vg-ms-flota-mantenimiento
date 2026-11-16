@@ -3,12 +3,14 @@ package pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -20,7 +22,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Configuración de seguridad reactiva y conversión de roles Keycloak/DualJWT.
+ * Reactive security configuration and Keycloak/DualJWT role mapping.
+ * SEC-001, SEC-004, SEC-007, SEC-023-A, SEC-023-B compliant:
+ * - 401 Unauthorized on any token validation failure via AuthenticationEntryPoint.
+ * - 403 Forbidden on insufficient roles.
  */
 @Configuration
 @EnableWebFluxSecurity
@@ -30,7 +35,7 @@ public class SecurityConfig {
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(
             ServerHttpSecurity http,
-            org.springframework.security.oauth2.jwt.ReactiveJwtDecoder jwtDecoder) {
+            ReactiveJwtDecoder jwtDecoder) {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
@@ -46,6 +51,10 @@ public class SecurityConfig {
                         .pathMatchers("/api/v1/**").authenticated()
                         .anyExchange().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2
+                        .authenticationEntryPoint((exchange, ex) -> {
+                            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                            return exchange.getResponse().setComplete();
+                        })
                         .jwt(jwt -> jwt
                                 .jwtDecoder(jwtDecoder)
                                 .jwtAuthenticationConverter(jwtAuthenticationConverter())))
@@ -58,7 +67,6 @@ public class SecurityConfig {
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
             List<String> roles = new ArrayList<>();
 
-            // 1. Roles estándar de realm_access de Keycloak
             Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
             if (realmAccess != null && realmAccess.containsKey("roles")) {
                 Object r = realmAccess.get("roles");
@@ -67,7 +75,6 @@ public class SecurityConfig {
                 }
             }
 
-            // 2. Roles del claim "roles" o "authorities" (vg-ms-auth)
             List<String> directRoles = jwt.getClaimAsStringList("roles");
             if (directRoles != null) {
                 roles.addAll(directRoles);
@@ -77,7 +84,6 @@ public class SecurityConfig {
                 roles.addAll(authRoles);
             }
 
-            // 3. Mapeo a SimpleGrantedAuthority con prefijo ROLE_
             return roles.stream()
                     .distinct()
                     .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)

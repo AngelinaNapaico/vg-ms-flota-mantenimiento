@@ -4,11 +4,15 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ServerWebExchange;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.in.MaintenanceOrderUseCase;
@@ -28,19 +32,25 @@ import reactor.core.publisher.Mono;
 
 /**
  * Primary Inbound REST Controller for Fleet Maintenance Orders.
- * 100% compliant with Hexagonal, Reactive WebFlux, STD-028 and AGENTS.md standards:
- * - Direct Mono/Flux publisher return types without domain model exposure.
- * - Centralized exception handling via GlobalExceptionHandler.
- * - Pure English REST API standard.
+ * Strictly complies with PRS standards:
+ * - HEX-01 / STD-028: Port in / DTO mapping isolation.
+ * - STD-075 / SEC-016: Strict Bean Validation & format validation on path variables.
+ * - SEC-007: RBAC SpEL expressions with principle of least privilege.
+ * - Reactive non-blocking Project Reactor (Mono/Flux).
  */
 @Slf4j
+@Validated
 @RestController
 @RequestMapping("/api/v1/maintenance-orders")
 @RequiredArgsConstructor
-@Tag(name = "Maintenance Orders", description = "Lifecycle and repair management for emergency fleet vehicles")
+@Tag(name = "Fleet Maintenance Orders", description = "Endpoints para la gestión reactiva del ciclo de vida de órdenes de mantenimiento de flota")
 public class MaintenanceOrderRest {
 
     private final MaintenanceOrderUseCase useCase;
+
+    // ═══════════════════════════════════════════════════
+    // LECTURAS (READ_ROLES)
+    // ═══════════════════════════════════════════════════
 
     @GetMapping
     @PreAuthorize(RoleConstants.READ_ROLES)
@@ -54,7 +64,8 @@ public class MaintenanceOrderRest {
     @PreAuthorize(RoleConstants.READ_ROLES)
     @Operation(summary = "Get maintenance order by unique ID")
     public Mono<MaintenanceOrderDetailResponse> getById(
-            @Parameter(description = "Unique ID of the maintenance order") @PathVariable String id) {
+            @Parameter(description = "Unique ID of the maintenance order")
+            @PathVariable @NotBlank @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Invalid ID format") String id) {
         return useCase.findById(id)
                 .map(MaintenanceOrderRestMapper::toDetailResponse);
     }
@@ -63,7 +74,8 @@ public class MaintenanceOrderRest {
     @PreAuthorize(RoleConstants.READ_ROLES)
     @Operation(summary = "Get maintenance order by tracking code")
     public Mono<MaintenanceOrderDetailResponse> getByCode(
-            @Parameter(description = "Order tracking code (e.g., ORD-2026-XXXX)") @PathVariable String code) {
+            @Parameter(description = "Order tracking code (e.g., ORD-2026-XXXX)")
+            @PathVariable @NotBlank @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Invalid code format") String code) {
         return useCase.findByCode(code)
                 .map(MaintenanceOrderRestMapper::toDetailResponse);
     }
@@ -72,7 +84,8 @@ public class MaintenanceOrderRest {
     @PreAuthorize(RoleConstants.READ_ROLES)
     @Operation(summary = "List maintenance history of an operational resource")
     public Flux<MaintenanceOrderResponse> getByResource(
-            @Parameter(description = "Operational resource ID") @PathVariable String resourceId) {
+            @Parameter(description = "Operational resource ID")
+            @PathVariable @NotBlank @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Invalid resource ID format") String resourceId) {
         return useCase.findByResource(resourceId)
                 .map(MaintenanceOrderRestMapper::toResponse);
     }
@@ -81,7 +94,8 @@ public class MaintenanceOrderRest {
     @PreAuthorize(RoleConstants.READ_ROLES)
     @Operation(summary = "List orders belonging to an entity (Police, Firefighters, Serenazgo)")
     public Flux<MaintenanceOrderResponse> getByEntity(
-            @Parameter(description = "Entity ID") @PathVariable String entityId) {
+            @Parameter(description = "Entity ID")
+            @PathVariable @NotBlank @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Invalid entity ID format") String entityId) {
         return useCase.findByEntity(entityId)
                 .map(MaintenanceOrderRestMapper::toResponse);
     }
@@ -94,6 +108,10 @@ public class MaintenanceOrderRest {
         return useCase.findByStatus(status)
                 .map(MaintenanceOrderRestMapper::toResponse);
     }
+
+    // ═══════════════════════════════════════════════════
+    // ESCRITURA (WRITE_ROLES)
+    // ═══════════════════════════════════════════════════
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -113,7 +131,7 @@ public class MaintenanceOrderRest {
     @PreAuthorize(RoleConstants.WRITE_ROLES)
     @Operation(summary = "Update failure reason, mileage, priority or workshop info of an open order")
     public Mono<MaintenanceOrderDetailResponse> update(
-            @PathVariable String id,
+            @PathVariable @NotBlank @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Invalid ID format") String id,
             @Valid @RequestBody UpdateMaintenanceOrderRequest request) {
         return useCase.update(id, MaintenanceOrderRestMapper.toDomain(request))
                 .map(MaintenanceOrderRestMapper::toDetailResponse);
@@ -123,7 +141,7 @@ public class MaintenanceOrderRest {
     @PreAuthorize(RoleConstants.WRITE_ROLES)
     @Operation(summary = "Assign external workshop, technician and delivery date (IN_DIAGNOSIS)")
     public Mono<MaintenanceOrderDetailResponse> assignWorkshop(
-            @PathVariable String id,
+            @PathVariable @NotBlank @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Invalid ID format") String id,
             @Valid @RequestBody AssignWorkshopRequest request) {
         return useCase.assignWorkshop(id, MaintenanceOrderRestMapper.toDomain(request))
                 .map(MaintenanceOrderRestMapper::toDetailResponse);
@@ -132,7 +150,8 @@ public class MaintenanceOrderRest {
     @PatchMapping("/{id}/start-repair")
     @PreAuthorize(RoleConstants.WRITE_ROLES)
     @Operation(summary = "Mark beginning of repair works in workshop (IN_WORKSHOP)")
-    public Mono<MaintenanceOrderDetailResponse> startRepair(@PathVariable String id) {
+    public Mono<MaintenanceOrderDetailResponse> startRepair(
+            @PathVariable @NotBlank @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Invalid ID format") String id) {
         return useCase.startRepair(id)
                 .map(MaintenanceOrderRestMapper::toDetailResponse);
     }
@@ -140,7 +159,8 @@ public class MaintenanceOrderRest {
     @PatchMapping("/{id}/quality-control")
     @PreAuthorize(RoleConstants.WRITE_ROLES)
     @Operation(summary = "Pass vehicle to quality control and technical test stage (QUALITY_CONTROL)")
-    public Mono<MaintenanceOrderDetailResponse> passToQualityControl(@PathVariable String id) {
+    public Mono<MaintenanceOrderDetailResponse> passToQualityControl(
+            @PathVariable @NotBlank @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Invalid ID format") String id) {
         return useCase.passToQualityControl(id)
                 .map(MaintenanceOrderRestMapper::toDetailResponse);
     }
@@ -149,7 +169,7 @@ public class MaintenanceOrderRest {
     @PreAuthorize(RoleConstants.WRITE_ROLES)
     @Operation(summary = "Issue technical discharge, complete order and restore resource to DISPONIBLE")
     public Mono<MaintenanceOrderDetailResponse> issueTechnicalDischarge(
-            @PathVariable String id,
+            @PathVariable @NotBlank @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Invalid ID format") String id,
             @Valid @RequestBody TechnicalDischargeRequest request,
             ServerWebExchange exchange) {
         String token = extractToken(exchange);
@@ -163,7 +183,7 @@ public class MaintenanceOrderRest {
     @PreAuthorize(RoleConstants.WRITE_ROLES)
     @Operation(summary = "Cancel maintenance order and restore resource to DISPONIBLE")
     public Mono<MaintenanceOrderDetailResponse> cancel(
-            @PathVariable String id,
+            @PathVariable @NotBlank @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Invalid ID format") String id,
             @Valid @RequestBody CancelOrderRequest request,
             ServerWebExchange exchange) {
         String token = extractToken(exchange);
@@ -171,6 +191,10 @@ public class MaintenanceOrderRest {
         return useCase.cancel(id, request.getReason(), "", token)
                 .map(MaintenanceOrderRestMapper::toDetailResponse);
     }
+
+    // ═══════════════════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════════════════
 
     private String extractToken(ServerWebExchange exchange) {
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);

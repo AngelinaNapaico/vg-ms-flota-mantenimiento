@@ -1,38 +1,48 @@
 package pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security;
 
-import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
-import org.springframework.security.oauth2.jwt.ReactiveJwtDecoders;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.*;
 
 /**
  * Explicit JWT decoder configuration ensuring ONLY Keycloak OIDC is accepted.
- * Legacy HMAC tokens or unauthorized providers are strictly rejected.
+ * Legacy HMAC tokens or unauthorized providers are strictly rejected (SEC-001).
+ * Translates any decoder or network failure into BadCredentialsException (401 Unauthorized).
  */
 @Configuration
 public class JwtDecoderConfig {
 
-    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:http://localhost:8090/realms/PRS}")
+    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
     private String issuerUri;
+
+    @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:${KEYCLOAK_JWK_SET_URI:http://localhost:8090/realms/PRS/protocol/openid-connect/certs}}")
+    private String jwkSetUri;
 
     @Bean
     @Profile("prod")
     public ReactiveJwtDecoder jwtDecoderProduction() {
         validateProductionIssuer();
-        return ReactiveJwtDecoders.fromIssuerLocation(issuerUri);
+        NimbusReactiveJwtDecoder decoder = NimbusReactiveJwtDecoder.withJwkSetUri(jwkSetUri).build();
+        OAuth2TokenValidator<Jwt> validator = JwtValidators.createDefaultWithIssuer(issuerUri);
+        decoder.setJwtValidator(validator);
+        return token -> decoder.decode(token)
+                .onErrorMap(Exception.class, ex -> new BadCredentialsException("Invalid or unverifiable JWT token in production", ex));
     }
 
     @Bean
     @Profile("!prod")
     public ReactiveJwtDecoder jwtDecoderDevelopment() {
-        return ReactiveJwtDecoders.fromIssuerLocation(issuerUri);
+        NimbusReactiveJwtDecoder decoder = NimbusReactiveJwtDecoder.withJwkSetUri(jwkSetUri).build();
+        OAuth2TokenValidator<Jwt> validator = JwtValidators.createDefaultWithIssuer(issuerUri);
+        decoder.setJwtValidator(validator);
+        return token -> decoder.decode(token)
+                .onErrorMap(Exception.class, ex -> new BadCredentialsException("Invalid or unverifiable JWT token", ex));
     }
 
-    @PostConstruct
-    @Profile("prod")
     public void validateProductionIssuer() {
         if (issuerUri == null || issuerUri.isBlank()) {
             throw new IllegalStateException(

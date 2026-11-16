@@ -1,0 +1,33 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: vg-ms-fleetmaintenance
+  profiles:
+    active: dev
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/test_fleet
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8090/realms/PRS
+          jwk-set-uri: http://localhost:8090/realms/PRS/protocol/openid-connect/certs
+
+keycloak:
+  enabled: true
+  issuer-uri: http://localhost:8090/realms/PRS
+  jwk-set-uri: http://localhost:8090/realms/PRS/protocol/openid-connect/certs
+
+services:
+  recursos:
+    url: http://localhost:9004
+  catalogo:
+    url: http://localhost:9005
+  incidentes:
+    url: http://localhost:9003
+
+jwt:
+  secret: dGVzdC1zZWNyZXQta2V5LWZvci10ZXN0aW5nLW9ubHktMTIzNDU2Nzg5MDEyMzQ1Ng==

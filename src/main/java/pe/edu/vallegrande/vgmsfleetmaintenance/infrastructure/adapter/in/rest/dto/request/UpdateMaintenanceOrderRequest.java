@@ -3,6 +3,7 @@ package pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.d
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -14,6 +15,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderPriority;
 /**
  * Request DTO for updating editable header fields of an active maintenance order.
  * Supports dual naming (English and Spanish) via Jackson aliases.
+ * STD-075 compliant: Cascading @Valid on embedded workshop detail.
  */
 @Data
 @Builder
@@ -51,6 +53,7 @@ public class UpdateMaintenanceOrderRequest {
     @Schema(description = "ID del incidente si proviene de un siniestro", example = "7b5f792c7c84938ece21b113")
     private String incidentId;
 
+    @Valid
     @JsonProperty("workshopDetail")
     @JsonAlias({"detalleTaller", "workshopDetail"})
     @Schema(description = "Datos opcionales del taller mecánico si ya fue asignado")

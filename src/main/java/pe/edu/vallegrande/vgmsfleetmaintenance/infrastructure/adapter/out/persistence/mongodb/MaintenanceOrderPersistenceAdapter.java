@@ -1,7 +1,10 @@
 package pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
+import pe.edu.vallegrande.vgmsfleetmaintenance.domain.exception.DomainException;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.model.MaintenanceOrder;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.MaintenanceOrderRepositoryPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.document.MaintenanceOrderDocument;
@@ -17,10 +20,11 @@ import java.util.Collection;
 /**
  * Secondary Outbound Persistence Adapter for MongoDB with multi-tenancy.
  * Implements MaintenanceOrderRepositoryPort isolating domain from database details.
- * REC-02/03 & TEN-01/02 & STD-086 compliant:
- * - SUPER_ADMIN/ADMIN has global view and management.
- * - MUNICIPALIDAD_ADMIN has supervisory read-only access.
- * - Entity users access and manage only their own entity's maintenance orders.
+ * Compliant with:
+ * - REC-02/03 & TEN-01/02 & STD-086: Multi-tenant partitioning.
+ * - SEC-009-A: Tenant-scoped exists checks for active orders.
+ * - SEC-009-B, SEC-020, SEC-021: Strict tenant derivation and rejection of cross-tenant claims.
+ * - SEC-022: Optimistic locking and duplicate key handling.
  */
 @Component
 @RequiredArgsConstructor
@@ -111,7 +115,16 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
                             return Mono.error(TenantScope.forbidden());
                         }
                     } else {
-                        if (document.getEntityId() == null && scope.entityId() != null) {
+                        if (!scope.canWrite()) {
+                            return Mono.error(TenantScope.forbidden());
+                        }
+                        if (!scope.all()) {
+                            if (scope.entityId() == null) {
+                                return Mono.error(TenantScope.forbidden());
+                            }
+                            if (document.getEntityId() != null && !document.getEntityId().equals(scope.entityId())) {
+                                return Mono.error(TenantScope.forbidden());
+                            }
                             document.setEntityId(scope.entityId());
                         }
                     }
@@ -122,13 +135,23 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
                     document.setUpdatedAt(LocalDateTime.now());
 
                     return repository.save(document)
+                            .onErrorMap(DuplicateKeyException.class, ex ->
+                                    new DomainException("A maintenance order with this code or active status already exists", ex))
+                            .onErrorMap(OptimisticLockingFailureException.class, ex ->
+                                    new DomainException("The maintenance order was updated concurrently. Please retry.", ex))
                             .map(MaintenanceOrderDocumentMapper::toDomain);
                 });
     }
 
     @Override
     public Mono<Boolean> existsByResourceIdAndOrderStatusNotIn(String resourceId, Collection<String> statuses) {
-        return repository.existsByResourceIdAndOrderStatusNotIn(resourceId, statuses);
+        return TenantScope.current()
+                .flatMap(scope -> {
+                    if (scope.all() || scope.entityId() == null) {
+                        return repository.existsByResourceIdAndOrderStatusNotIn(resourceId, statuses);
+                    }
+                    return repository.existsByResourceIdAndEntityIdAndOrderStatusNotIn(resourceId, scope.entityId(), statuses);
+                });
     }
 
     private boolean canRead(TenantScope scope, MaintenanceOrderDocument doc) {

@@ -43,6 +43,7 @@ public class MaintenanceOrder {
 
     private String remarks;
     private String status;
+    private Long version;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
