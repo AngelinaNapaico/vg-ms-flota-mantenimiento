@@ -120,7 +120,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UpstreamServiceException.class)
     public Mono<ResponseEntity<Map<String, Object>>> handleUpstream(UpstreamServiceException ex) {
-        log.warn("External upstream service error - type: {}", ex.getClass().getSimpleName(), ex);
+        log.warn("External upstream service error during integration call - message: {}", ex.getMessage(), ex);
         return Mono.just(buildResponse(
                 HttpStatus.BAD_GATEWAY,
                 "Bad Gateway",
@@ -129,7 +129,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public Mono<ResponseEntity<Map<String, Object>>> handleGeneric(Exception ex) {
-        log.error("Unhandled server error - type: {}", ex.getClass().getSimpleName(), ex);
+        log.error("Unhandled server error during operation execution - message: {}", ex.getMessage(), ex);
         return Mono.just(buildResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Internal Server Error",

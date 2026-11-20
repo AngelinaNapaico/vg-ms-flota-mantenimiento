@@ -113,31 +113,9 @@ public class MaintenanceOrderRest {
         @Operation(summary = "Create maintenance order and set vehicle to EN_MANTENIMIENTO")
         public Mono<MaintenanceOrderDetailResponse> create(
                         @Valid @RequestBody CreateMaintenanceOrderRequest request) {
-                return TenantScope.current()
-                                .flatMap(scope -> {
-                                        String effectiveEntityId;
-                                        if (scope.all()) {
-                                                effectiveEntityId = (request.getEntityId() != null && !request.getEntityId().isBlank())
-                                                                ? request.getEntityId()
-                                                                : scope.entityId();
-                                                if (effectiveEntityId == null || effectiveEntityId.isBlank()) {
-                                                        return Mono.error(new DomainException("Entity ID is required to create a maintenance order"));
-                                                }
-                                        } else {
-                                                if (scope.entityId() == null) {
-                                                        return Mono.error(TenantScope.forbidden());
-                                                }
-                                                if (request.getEntityId() != null && !request.getEntityId().isBlank()
-                                                                && !request.getEntityId().equals(scope.entityId())) {
-                                                        return Mono.error(TenantScope.forbidden());
-                                                }
-                                                effectiveEntityId = scope.entityId();
-                                        }
-
-                                        return SecurityUtils.getCurrentUsername()
-                                                        .defaultIfEmpty("SYSTEM")
-                                                        .flatMap(dni -> useCase.create(MaintenanceOrderRestMapper.toDomain(request, dni, effectiveEntityId)));
-                                })
+                return SecurityUtils.getCurrentUsername()
+                                .defaultIfEmpty("SYSTEM")
+                                .flatMap(dni -> useCase.create(MaintenanceOrderRestMapper.toDomain(request, dni)))
                                 .map(MaintenanceOrderRestMapper::toDetailResponse);
         }
 

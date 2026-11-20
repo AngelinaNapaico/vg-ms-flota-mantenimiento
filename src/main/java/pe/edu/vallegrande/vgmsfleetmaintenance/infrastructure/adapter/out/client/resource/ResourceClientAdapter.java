@@ -140,7 +140,7 @@ public class ResourceClientAdapter implements ResourceClientPort {
                             log.error("Resource service unavailable with status {}, type: {}",
                                     response.statusCode().value(),
                                     err.getClass().getSimpleName());
-                            return Mono.error(new DomainException(
+                            return Mono.error(new UpstreamServiceException(
                                     "External resource service is temporarily unavailable",
                                     err));
                         }))
@@ -183,7 +183,7 @@ public class ResourceClientAdapter implements ResourceClientPort {
                             log.error("Resource service unavailable with status {}, type: {}",
                                     response.statusCode().value(),
                                     err.getClass().getSimpleName());
-                            return Mono.error(new DomainException(
+                            return Mono.error(new UpstreamServiceException(
                                     "External resource service is temporarily unavailable",
                                     err));
                         }))

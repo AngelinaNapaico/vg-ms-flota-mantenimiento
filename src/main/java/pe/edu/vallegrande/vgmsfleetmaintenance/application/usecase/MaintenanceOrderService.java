@@ -16,6 +16,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.AuthClientPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.MaintenanceOrderRepositoryPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.ResourceClientPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderStatus;
+import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security.TenantScope;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -89,10 +90,8 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
         String correlationId = UUID.randomUUID().toString();
 
         return resolveCurrentActor().flatMap(actor ->
-                resolveCurrentTenant().flatMap(tenant -> {
-                    String effectiveTenant = order.getEntityId() != null && !order.getEntityId().isBlank()
-                            ? order.getEntityId()
-                            : (tenant.isBlank() ? null : tenant);
+                resolveEffectiveEntityId(order.getEntityId()).flatMap(effectiveTenant -> {
+                    order.setEntityId(effectiveTenant);
 
                     return resourceClientPort
                             .validateResourceBelongsToEntity(order.getResourceId(), effectiveTenant, token)
@@ -340,5 +339,41 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                 })
                 .switchIfEmpty(authClientPort.getCurrentEntityId())
                 .defaultIfEmpty("");
+    }
+
+    private Mono<String> resolveEffectiveEntityId(String requestedEntityId) {
+        return ReactiveSecurityContextHolder.getContext()
+                .map(SecurityContext::getAuthentication)
+                .map(TenantScope::from)
+                .flatMap(scope -> {
+                    if (scope.all()) {
+                        String id = (requestedEntityId != null && !requestedEntityId.isBlank())
+                                ? requestedEntityId
+                                : scope.entityId();
+                        if (id == null || id.isBlank()) {
+                            return Mono.error(new DomainException("Entity ID is required to create a maintenance order"));
+                        }
+                        return Mono.just(id);
+                    }
+                    if (scope.entityId() == null) {
+                        return Mono.error(TenantScope.forbidden());
+                    }
+                    if (requestedEntityId != null && !requestedEntityId.isBlank()
+                            && !requestedEntityId.equals(scope.entityId())) {
+                        return Mono.error(TenantScope.forbidden());
+                    }
+                    return Mono.just(scope.entityId());
+                })
+                .switchIfEmpty(
+                        resolveCurrentTenant().flatMap(tenant -> {
+                            String effective = (requestedEntityId != null && !requestedEntityId.isBlank())
+                                    ? requestedEntityId
+                                    : (tenant.isBlank() ? null : tenant);
+                            if (effective == null || effective.isBlank()) {
+                                return Mono.error(new DomainException("Entity ID is required to create a maintenance order"));
+                            }
+                            return Mono.just(effective);
+                        })
+                );
     }
 }

@@ -80,26 +80,26 @@ public class MaintenanceOrderResponse {
 
     // Métodos de compatibilidad con clientes existentes que esperan nombres en español
     @JsonProperty("codigoOrden")
-    public String getCodigoOrden() { return orderCode; }
+    public String getOrderCodeCompat() { return orderCode; }
 
     @JsonProperty("recursoId")
-    public String getRecursoId() { return resourceId; }
+    public String getResourceIdCompat() { return resourceId; }
 
     @JsonProperty("recursoPlaca")
-    public String getRecursoPlaca() { return resourcePlate; }
+    public String getResourcePlateCompat() { return resourcePlate; }
 
     @JsonProperty("entidadId")
-    public String getEntidadId() { return entityId; }
+    public String getEntityIdCompat() { return entityId; }
 
     @JsonProperty("motivoAveria")
-    public String getMotivoAveria() { return failureReason; }
+    public String getFailureReasonCompat() { return failureReason; }
 
     @JsonProperty("kilometrajeReportado")
-    public Integer getKilometrajeReportado() { return reportedMileage; }
+    public Integer getReportedMileageCompat() { return reportedMileage; }
 
     @JsonProperty("creadoEn")
-    public LocalDateTime getCreadoEn() { return createdAt; }
+    public LocalDateTime getCreatedAtCompat() { return createdAt; }
 
     @JsonProperty("actualizadoEn")
-    public LocalDateTime getActualizadoEn() { return updatedAt; }
+    public LocalDateTime getUpdatedAtCompat() { return updatedAt; }
 }
