@@ -124,9 +124,10 @@ public class GlobalExceptionHandler {
     public Mono<ResponseEntity<Map<String, Object>>> handleUpstream(
             UpstreamServiceException ex, ServerWebExchange exchange) {
         String errorRef = UUID.randomUUID().toString().substring(0, 8);
-        log.warn("Upstream integration error [ref={}, method={}, path={}, type={}, cause={}]",
+        String statusText = ex.getUpstreamStatus() != null ? String.valueOf(ex.getUpstreamStatus()) : "TRANSPORT";
+        log.warn("Upstream integration error [ref={}, method={}, path={}, type={}, operation={}, upstreamStatus={}, technicalCause={}]",
                 errorRef, resolveMethod(exchange), resolveSanitizedPath(exchange),
-                ex.getClass().getSimpleName(), resolveCauseType(ex));
+                ex.getClass().getSimpleName(), ex.getOperation(), statusText, ex.getTechnicalCause());
         return Mono.just(buildResponse(
                 HttpStatus.BAD_GATEWAY,
                 "Bad Gateway",
@@ -164,9 +165,15 @@ public class GlobalExceptionHandler {
 
     private String resolveCauseType(Throwable ex) {
         if (ex == null || ex.getCause() == null) {
-            return "NONE";
+            return "DIRECT";
         }
-        return ex.getCause().getClass().getSimpleName();
+        Throwable cursor = ex.getCause();
+        int depth = 0;
+        while (cursor.getCause() != null && cursor.getCause() != cursor && depth < 5) {
+            cursor = cursor.getCause();
+            depth++;
+        }
+        return cursor.getClass().getSimpleName();
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String error, String message) {

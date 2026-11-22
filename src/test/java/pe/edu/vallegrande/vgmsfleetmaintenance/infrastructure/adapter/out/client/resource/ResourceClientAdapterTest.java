@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ResourceClientAdapterTest {
 
@@ -88,7 +89,7 @@ class ResourceClientAdapterTest {
     }
 
     @Test
-    @DisplayName("Should translate 5xx server error to UpstreamServiceException without propagating WebClient cause")
+    @DisplayName("Should translate 5xx server error to UpstreamServiceException with sanitized technical metadata")
     void shouldTranslate5xxToUpstreamExceptionWithoutTechnicalCause() {
         ExchangeFunction exchangeFunction = request -> Mono.just(ClientResponse.create(HttpStatus.SERVICE_UNAVAILABLE).build());
         ResourceClientAdapter adapter = new ResourceClientAdapter(
@@ -96,14 +97,17 @@ class ResourceClientAdapterTest {
 
         StepVerifier.create(adapter.enableResourceToAvailable("rec-503", "jwt-token"))
                 .expectErrorSatisfies(err -> {
-                    assertInstanceOf(UpstreamServiceException.class, err);
-                    assertNull(err.getCause());
+                    UpstreamServiceException ex = assertInstanceOf(UpstreamServiceException.class, err);
+                    assertNull(ex.getCause());
+                    assertEquals("enable", ex.getOperation());
+                    assertEquals(503, ex.getUpstreamStatus());
+                    assertTrue(ex.getTechnicalCause().startsWith("HTTP_503:"));
                 })
                 .verify();
     }
 
     @Test
-    @DisplayName("Should translate transport failure to UpstreamServiceException without propagating technical cause")
+    @DisplayName("Should translate transport failure to UpstreamServiceException with sanitized technical metadata")
     void shouldTranslateTransportFailureWithoutTechnicalCause() {
         ExchangeFunction exchangeFunction = request -> Mono.error(new RuntimeException("Connection refused"));
         ResourceClientAdapter adapter = new ResourceClientAdapter(
@@ -111,8 +115,11 @@ class ResourceClientAdapterTest {
 
         StepVerifier.create(adapter.validateResourceBelongsToEntity("rec-net", "ent-001", "jwt-token"))
                 .expectErrorSatisfies(err -> {
-                    assertInstanceOf(UpstreamServiceException.class, err);
-                    assertNull(err.getCause());
+                    UpstreamServiceException ex = assertInstanceOf(UpstreamServiceException.class, err);
+                    assertNull(ex.getCause());
+                    assertEquals("validate", ex.getOperation());
+                    assertNull(ex.getUpstreamStatus());
+                    assertEquals("TRANSPORT:RuntimeException", ex.getTechnicalCause());
                 })
                 .verify();
     }
