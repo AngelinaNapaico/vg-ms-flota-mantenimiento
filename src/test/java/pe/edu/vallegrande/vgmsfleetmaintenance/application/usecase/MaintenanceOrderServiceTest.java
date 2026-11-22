@@ -7,6 +7,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
+import pe.edu.vallegrande.vgmsfleetmaintenance.domain.exception.DomainException;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.model.MaintenanceOrder;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.model.TechnicalDischargeReport;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.model.WorkshopDetail;
@@ -49,6 +51,7 @@ class MaintenanceOrderServiceTest {
         void setUp() {
                 lenient().when(authClientPort.getCurrentUsername()).thenReturn(Mono.just("test-user"));
                 lenient().when(authClientPort.getCurrentEntityId()).thenReturn(Mono.just("ent-policia"));
+                lenient().when(authClientPort.hasGlobalAccess()).thenReturn(Mono.just(false));
                 lenient().when(resourceClientPort.validateResourceBelongsToEntity(any(), any(), any())).thenReturn(Mono.empty());
                 lenient().when(resourceClientPort.validateResourceBelongsToEntity(any(), any())).thenReturn(Mono.empty());
                 lenient().when(auditLogRepositoryPort.recordAudit(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(Mono.empty());
@@ -132,5 +135,60 @@ class MaintenanceOrderServiceTest {
                                 .verifyComplete();
 
                 verify(resourceClientPort, times(1)).enableResourceToAvailable(eq("rec-001"), eq("mock-token"));
+        }
+
+        @Test
+        @DisplayName("Should reject order creation when non-global operator targets another entity")
+        void shouldRejectCreationForForeignEntity() {
+                newOrder.setEntityId("ent-bomberos");
+
+                StepVerifier.create(useCase.create(newOrder, "mock-token"))
+                                .expectError(AccessDeniedException.class)
+                                .verify();
+
+                verify(repositoryPort, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should reject order creation when non-global operator has no entity assigned")
+        void shouldRejectCreationWithoutCallerEntity() {
+                when(authClientPort.getCurrentEntityId()).thenReturn(Mono.empty());
+
+                StepVerifier.create(useCase.create(newOrder, "mock-token"))
+                                .expectError(AccessDeniedException.class)
+                                .verify();
+
+                verify(repositoryPort, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should allow global admin to create order with explicit entity ID")
+        void shouldAllowGlobalAdminWithExplicitEntityId() {
+                when(authClientPort.hasGlobalAccess()).thenReturn(Mono.just(true));
+                when(authClientPort.getCurrentEntityId()).thenReturn(Mono.empty());
+                when(repositoryPort.existsByResourceIdAndOrderStatusNotIn(eq("rec-001"), anyCollection()))
+                                .thenReturn(Mono.just(false));
+                when(resourceClientPort.disableResourceForMaintenance(eq("rec-001"), anyString()))
+                                .thenReturn(Mono.empty());
+                when(repositoryPort.save(any(MaintenanceOrder.class)))
+                                .thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+
+                StepVerifier.create(useCase.create(newOrder, "mock-token"))
+                                .expectNextMatches(saved -> "ent-policia".equals(saved.getEntityId()))
+                                .verifyComplete();
+        }
+
+        @Test
+        @DisplayName("Should require entity ID when global admin creates order without entity")
+        void shouldRequireEntityIdForGlobalAdminWithoutEntity() {
+                when(authClientPort.hasGlobalAccess()).thenReturn(Mono.just(true));
+                when(authClientPort.getCurrentEntityId()).thenReturn(Mono.empty());
+                newOrder.setEntityId(null);
+
+                StepVerifier.create(useCase.create(newOrder, "mock-token"))
+                                .expectError(DomainException.class)
+                                .verify();
+
+                verify(repositoryPort, never()).save(any());
         }
 }

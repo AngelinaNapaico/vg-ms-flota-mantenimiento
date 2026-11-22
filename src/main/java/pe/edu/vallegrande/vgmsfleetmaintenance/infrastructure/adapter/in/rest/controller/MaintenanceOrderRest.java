@@ -13,7 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import pe.edu.vallegrande.vgmsfleetmaintenance.domain.exception.DomainException;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.in.MaintenanceOrderUseCase;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderStatus;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.dto.request.AssignWorkshopRequest;
@@ -26,7 +25,6 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.dt
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.mapper.MaintenanceOrderRestMapper;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security.RoleConstants;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security.SecurityUtils;
-import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security.TenantScope;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 

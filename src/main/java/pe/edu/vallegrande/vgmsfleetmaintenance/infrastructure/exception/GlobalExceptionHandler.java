@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.ServerWebInputException;
 import pe.edu.vallegrande.vgmsfleetmaintenance.application.mapper.FieldNameMapper;
 import pe.edu.vallegrande.vgmsfleetmaintenance.application.mapper.ValidationMessageMapper;
@@ -21,6 +22,7 @@ import reactor.core.publisher.Mono;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Centralized global exception handler for REST controllers.
@@ -119,8 +121,12 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(UpstreamServiceException.class)
-    public Mono<ResponseEntity<Map<String, Object>>> handleUpstream(UpstreamServiceException ex) {
-        log.warn("External upstream service error during integration call - message: {}", ex.getMessage(), ex);
+    public Mono<ResponseEntity<Map<String, Object>>> handleUpstream(
+            UpstreamServiceException ex, ServerWebExchange exchange) {
+        String errorRef = UUID.randomUUID().toString().substring(0, 8);
+        log.warn("Upstream integration error [ref={}, method={}, path={}, type={}, cause={}]",
+                errorRef, resolveMethod(exchange), resolveSanitizedPath(exchange),
+                ex.getClass().getSimpleName(), resolveCauseType(ex));
         return Mono.just(buildResponse(
                 HttpStatus.BAD_GATEWAY,
                 "Bad Gateway",
@@ -128,12 +134,39 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public Mono<ResponseEntity<Map<String, Object>>> handleGeneric(Exception ex) {
-        log.error("Unhandled server error during operation execution - message: {}", ex.getMessage(), ex);
+    public Mono<ResponseEntity<Map<String, Object>>> handleGeneric(
+            Exception ex, ServerWebExchange exchange) {
+        String errorRef = UUID.randomUUID().toString().substring(0, 8);
+        log.error("Unhandled server error [ref={}, method={}, path={}, type={}, cause={}]",
+                errorRef, resolveMethod(exchange), resolveSanitizedPath(exchange),
+                ex.getClass().getSimpleName(), resolveCauseType(ex));
         return Mono.just(buildResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Internal Server Error",
                 "An unexpected error occurred"));
+    }
+
+    private String resolveMethod(ServerWebExchange exchange) {
+        if (exchange == null || exchange.getRequest().getMethod() == null) {
+            return "UNKNOWN";
+        }
+        return exchange.getRequest().getMethod().name();
+    }
+
+    private String resolveSanitizedPath(ServerWebExchange exchange) {
+        if (exchange == null) {
+            return "UNKNOWN";
+        }
+        String rawPath = exchange.getRequest().getPath().value();
+        String sanitized = rawPath.replaceAll("[\\r\\n\\t]", "_");
+        return sanitized.length() > 120 ? sanitized.substring(0, 120) : sanitized;
+    }
+
+    private String resolveCauseType(Throwable ex) {
+        if (ex == null || ex.getCause() == null) {
+            return "NONE";
+        }
+        return ex.getCause().getClass().getSimpleName();
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String error, String message) {

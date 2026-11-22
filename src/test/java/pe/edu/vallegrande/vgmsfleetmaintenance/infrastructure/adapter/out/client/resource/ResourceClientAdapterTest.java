@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
 import org.springframework.web.reactive.function.client.WebClient;
+import pe.edu.vallegrande.vgmsfleetmaintenance.domain.exception.DomainException;
+import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.exception.custom.UpstreamServiceException;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -15,7 +17,8 @@ import java.net.URI;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ResourceClientAdapterTest {
 
@@ -67,5 +70,50 @@ class ResourceClientAdapterTest {
         assertEquals(HttpMethod.PATCH, capturedMethod.get());
         assertEquals("Bearer jwt-token-xyz", capturedAuth.get());
         assertEquals("http://localhost:9004/api/v1/resources/rec-123/availability?availability=DISPONIBLE", capturedUri.get().toString());
+    }
+
+    @Test
+    @DisplayName("Should translate 4xx client error to DomainException without propagating WebClient cause")
+    void shouldTranslate4xxToDomainExceptionWithoutTechnicalCause() {
+        ExchangeFunction exchangeFunction = request -> Mono.just(ClientResponse.create(HttpStatus.NOT_FOUND).build());
+        ResourceClientAdapter adapter = new ResourceClientAdapter(
+                WebClient.builder().exchangeFunction(exchangeFunction), "http://localhost:9004");
+
+        StepVerifier.create(adapter.disableResourceForMaintenance("rec-404", "jwt-token"))
+                .expectErrorSatisfies(err -> {
+                    assertInstanceOf(DomainException.class, err);
+                    assertNull(err.getCause());
+                })
+                .verify();
+    }
+
+    @Test
+    @DisplayName("Should translate 5xx server error to UpstreamServiceException without propagating WebClient cause")
+    void shouldTranslate5xxToUpstreamExceptionWithoutTechnicalCause() {
+        ExchangeFunction exchangeFunction = request -> Mono.just(ClientResponse.create(HttpStatus.SERVICE_UNAVAILABLE).build());
+        ResourceClientAdapter adapter = new ResourceClientAdapter(
+                WebClient.builder().exchangeFunction(exchangeFunction), "http://localhost:9004");
+
+        StepVerifier.create(adapter.enableResourceToAvailable("rec-503", "jwt-token"))
+                .expectErrorSatisfies(err -> {
+                    assertInstanceOf(UpstreamServiceException.class, err);
+                    assertNull(err.getCause());
+                })
+                .verify();
+    }
+
+    @Test
+    @DisplayName("Should translate transport failure to UpstreamServiceException without propagating technical cause")
+    void shouldTranslateTransportFailureWithoutTechnicalCause() {
+        ExchangeFunction exchangeFunction = request -> Mono.error(new RuntimeException("Connection refused"));
+        ResourceClientAdapter adapter = new ResourceClientAdapter(
+                WebClient.builder().exchangeFunction(exchangeFunction), "http://localhost:9004");
+
+        StepVerifier.create(adapter.validateResourceBelongsToEntity("rec-net", "ent-001", "jwt-token"))
+                .expectErrorSatisfies(err -> {
+                    assertInstanceOf(UpstreamServiceException.class, err);
+                    assertNull(err.getCause());
+                })
+                .verify();
     }
 }
