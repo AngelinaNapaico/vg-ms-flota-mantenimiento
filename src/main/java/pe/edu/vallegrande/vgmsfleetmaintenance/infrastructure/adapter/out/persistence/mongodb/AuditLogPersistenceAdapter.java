@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.AuditLogRepositoryPort;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.document.AuditLogDocument;
-import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.mapper.AuditLogDocumentMapper;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.repository.AuditLogRepository;
 import reactor.core.publisher.Mono;
 
@@ -25,8 +24,17 @@ public class AuditLogPersistenceAdapter implements AuditLogRepositoryPort {
     public Mono<Void> recordAudit(String action, String orderCode, String resourceId,
             String actor, String tenant, String result,
             String correlationId, String errorDetails) {
-        AuditLogDocument doc = AuditLogDocumentMapper.toDocument(
-                action, orderCode, resourceId, actor, tenant, result, correlationId, errorDetails);
+        AuditLogDocument doc = AuditLogDocument.builder()
+                .timestamp(Instant.now())
+                .action(action)
+                .orderCode(orderCode)
+                .resourceId(resourceId)
+                .actor(actor)
+                .tenant(tenant)
+                .result(result)
+                .correlationId(correlationId)
+                .errorDetails(errorDetails)
+                .build();
 
         var saveMono = repository.save(doc);
         if (saveMono == null) {
