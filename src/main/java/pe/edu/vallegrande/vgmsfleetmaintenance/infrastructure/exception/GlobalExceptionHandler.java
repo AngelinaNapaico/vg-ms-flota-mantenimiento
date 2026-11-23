@@ -59,9 +59,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DomainException.class)
     public Mono<ResponseEntity<Map<String, Object>>> handleDomain(DomainException ex) {
-        log.warn("Domain exception - type: {}", ex.getClass().getSimpleName());
+        log.warn("Domain exception - type: {}, notFound: {}", ex.getClass().getSimpleName(), ex.isNotFound());
 
-        if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("not found")) {
+        if (ex.isNotFound()) {
             return Mono.just(buildResponse(
                     HttpStatus.NOT_FOUND,
                     "Not Found",
@@ -79,7 +79,8 @@ public class GlobalExceptionHandler {
             UpstreamServiceException ex, ServerWebExchange exchange) {
         String errorRef = UUID.randomUUID().toString().substring(0, 8);
         String statusText = ex.getUpstreamStatus() != null ? String.valueOf(ex.getUpstreamStatus()) : "TRANSPORT";
-        log.warn("Upstream integration error [ref={}, method={}, path={}, type={}, operation={}, upstreamStatus={}, technicalCause={}]",
+        log.warn(
+                "Upstream integration error [ref={}, method={}, path={}, type={}, operation={}, upstreamStatus={}, technicalCause={}]",
                 errorRef, resolveMethod(exchange), resolveSanitizedPath(exchange),
                 ex.getClass().getSimpleName(), ex.getOperation(), statusText, ex.getTechnicalCause());
         return Mono.just(buildResponse(
@@ -121,12 +122,14 @@ public class GlobalExceptionHandler {
         }
 
         if (ex instanceof ResponseStatusException rse) {
+            HttpStatus resolved = HttpStatus.resolve(rse.getStatusCode().value());
+            HttpStatus status = resolved != null ? resolved : HttpStatus.INTERNAL_SERVER_ERROR;
             log.warn("Response status error [ref={}, method={}, path={}, status={}, type={}]",
-                    errorRef, method, path, rse.getStatusCode().value(), type);
+                    errorRef, method, path, status.value(), type);
             return Mono.just(buildResponse(
-                    HttpStatus.resolve(rse.getStatusCode().value()),
-                    "Resource Error",
-                    "Request cannot be processed by the server"));
+                    status,
+                    status.getReasonPhrase(),
+                    resolvePublicStatusMessage(status)));
         }
 
         if (ex instanceof DataIntegrityViolationException) {
@@ -172,6 +175,19 @@ public class GlobalExceptionHandler {
             depth++;
         }
         return cursor.getClass().getSimpleName();
+    }
+
+    private String resolvePublicStatusMessage(HttpStatus status) {
+        return switch (status) {
+            case BAD_REQUEST -> "Malformed request payload or invalid parameter format";
+            case UNAUTHORIZED -> "Authentication required or invalid credentials";
+            case FORBIDDEN -> "Access denied: insufficient permissions";
+            case NOT_FOUND -> "Requested resource was not found";
+            case METHOD_NOT_ALLOWED -> "HTTP method is not supported for this endpoint";
+            case CONFLICT -> "Request conflicts with the current state of the resource";
+            case UNSUPPORTED_MEDIA_TYPE -> "Unsupported media type in request";
+            default -> "Request cannot be processed by the server";
+        };
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String error, String message) {

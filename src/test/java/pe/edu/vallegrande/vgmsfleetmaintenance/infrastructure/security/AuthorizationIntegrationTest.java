@@ -55,14 +55,18 @@ class AuthorizationIntegrationTest {
 
     @Test
     @WithMockUser(roles = "CIUDADANO")
-    @DisplayName("Should reject post for ciudadano role with 403 Forbidden")
+    @DisplayName("Should reject post for ciudadano role with 403 Forbidden and normalized JSON payload")
     void shouldRejectPostForCiudadano() {
         webTestClient.post()
                 .uri("/api/v1/maintenance-orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(SAMPLE_CREATE_PAYLOAD)
                 .exchange()
-                .expectStatus().isForbidden();
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(403)
+                .jsonPath("$.error").isEqualTo("Forbidden")
+                .jsonPath("$.message").isEqualTo("Access denied: insufficient permissions");
     }
 
     @Test

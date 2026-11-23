@@ -53,12 +53,16 @@ class SecurityIntegrationTest {
         // ═══════════════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("Should return 401 for GET without token")
+    @DisplayName("Should return 401 with normalized JSON payload for GET without token")
     void shouldReturn401WhenListingWithoutToken() {
         webTestClient.get()
                 .uri("/api/v1/maintenance-orders")
                 .exchange()
-                .expectStatus().isUnauthorized();
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(401)
+                .jsonPath("$.error").isEqualTo("Unauthorized")
+                .jsonPath("$.message").isEqualTo("Authentication required or invalid credentials");
     }
 
     @Test

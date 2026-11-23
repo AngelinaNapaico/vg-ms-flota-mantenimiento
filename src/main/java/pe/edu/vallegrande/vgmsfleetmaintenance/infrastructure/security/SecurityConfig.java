@@ -3,8 +3,10 @@ package pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
@@ -15,8 +17,11 @@ import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,10 +29,8 @@ import java.util.stream.Collectors;
 
 /**
  * Reactive security configuration and Keycloak JWT role mapping.
- * Enforces authentication entry points returning 401 Unauthorized for invalid
- * tokens
- * and authorization checks returning 403 Forbidden for insufficient
- * permissions.
+ * Enforces normalized JSON error responses for 401 Unauthorized and 403 Forbidden
+ * without exposing internal security details.
  */
 @Configuration
 @EnableWebFluxSecurity
@@ -66,15 +69,50 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.PATCH, "/api/v1/maintenance-orders/**").hasAnyRole(WRITE_ROLES)
                         .pathMatchers(HttpMethod.DELETE, "/api/v1/maintenance-orders/**").hasAnyRole(WRITE_ROLES)
                         .anyExchange().denyAll())
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((exchange, ex) -> writeErrorResponse(
+                                exchange,
+                                HttpStatus.UNAUTHORIZED,
+                                "Unauthorized",
+                                "Authentication required or invalid credentials"))
+                        .accessDeniedHandler((exchange, ex) -> writeErrorResponse(
+                                exchange,
+                                HttpStatus.FORBIDDEN,
+                                "Forbidden",
+                                "Access denied: insufficient permissions")))
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .authenticationEntryPoint((exchange, ex) -> {
-                            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-                            return exchange.getResponse().setComplete();
-                        })
+                        .authenticationEntryPoint((exchange, ex) -> writeErrorResponse(
+                                exchange,
+                                HttpStatus.UNAUTHORIZED,
+                                "Unauthorized",
+                                "Authentication required or invalid credentials"))
+                        .accessDeniedHandler((exchange, ex) -> writeErrorResponse(
+                                exchange,
+                                HttpStatus.FORBIDDEN,
+                                "Forbidden",
+                                "Access denied: insufficient permissions"))
                         .jwt(jwt -> jwt
                                 .jwtDecoder(jwtDecoder)
                                 .jwtAuthenticationConverter(jwtAuthenticationConverter())))
                 .build();
+    }
+
+    private Mono<Void> writeErrorResponse(
+            ServerWebExchange exchange,
+            HttpStatus status,
+            String error,
+            String message) {
+        var response = exchange.getResponse();
+        response.setStatusCode(status);
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        String payload = String.format(
+                "{\"timestamp\":\"%s\",\"status\":%d,\"error\":\"%s\",\"message\":\"%s\"}",
+                Instant.now().toString(),
+                status.value(),
+                error,
+                message);
+        DataBuffer buffer = response.bufferFactory().wrap(payload.getBytes(StandardCharsets.UTF_8));
+        return response.writeWith(Mono.just(buffer));
     }
 
     @Bean

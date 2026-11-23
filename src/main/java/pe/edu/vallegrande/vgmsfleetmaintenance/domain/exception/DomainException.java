@@ -1,16 +1,32 @@
 package pe.edu.vallegrande.vgmsfleetmaintenance.domain.exception;
 
 /**
- * Excepción de dominio para violaciones de reglas de negocio e invariantes.
- * Libre de dependencias con Spring o frameworks HTTP según estándar PR241.
+ * Domain exception for business rule violations, invariants, and missing domain entities.
+ * Free of Spring or HTTP framework dependencies.
  */
 public class DomainException extends RuntimeException {
 
+    private final boolean notFound;
+
     public DomainException(String message) {
-        super(message);
+        this(message, false);
     }
 
     public DomainException(String message, Throwable cause) {
         super(message, cause);
+        this.notFound = false;
+    }
+
+    private DomainException(String message, boolean notFound) {
+        super(message);
+        this.notFound = notFound;
+    }
+
+    public static DomainException notFound(String message) {
+        return new DomainException(message, true);
+    }
+
+    public boolean isNotFound() {
+        return notFound;
     }
 }

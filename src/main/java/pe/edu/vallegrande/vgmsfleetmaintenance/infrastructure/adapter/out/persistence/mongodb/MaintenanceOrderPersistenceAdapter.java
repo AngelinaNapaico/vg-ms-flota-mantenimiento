@@ -110,7 +110,7 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
 
                     if (order.getId() != null) {
                         return repository.findById(order.getId())
-                                .switchIfEmpty(Mono.error(new DomainException("Maintenance order not found")))
+                                .switchIfEmpty(Mono.error(DomainException.notFound("Requested maintenance order was not found")))
                                 .flatMap(persistedDoc -> {
                                     if (!canWrite(scope, persistedDoc)) {
                                         return Mono.error(TenantScope.forbidden());

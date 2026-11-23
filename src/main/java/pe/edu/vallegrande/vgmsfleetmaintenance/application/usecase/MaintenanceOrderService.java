@@ -53,13 +53,13 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
     @Override
     public Mono<MaintenanceOrder> findById(String id) {
         return repositoryPort.findById(id)
-                .switchIfEmpty(Mono.error(new DomainException("Maintenance order not found: " + id)));
+                .switchIfEmpty(Mono.error(DomainException.notFound("Requested maintenance order was not found")));
     }
 
     @Override
     public Mono<MaintenanceOrder> findByCode(String code) {
         return repositoryPort.findByOrderCode(code)
-                .switchIfEmpty(Mono.error(new DomainException("Maintenance order not found with code: " + code)));
+                .switchIfEmpty(Mono.error(DomainException.notFound("Requested maintenance order was not found")));
     }
 
     @Override
