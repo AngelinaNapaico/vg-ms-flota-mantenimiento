@@ -26,29 +26,12 @@ import java.util.UUID;
 
 /**
  * Centralized global exception handler for REST controllers.
- * Formats uniform error responses and ensures secure log sanitization
- * by recording diagnostic context without exposing internal traces to clients.
+ * Consolidates HTTP status resolution by exception type and ensures secure
+ * log sanitization without exposing internal structure or traces to clients.
  */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    @ExceptionHandler(DomainException.class)
-    public Mono<ResponseEntity<Map<String, Object>>> handleDomain(DomainException ex) {
-        log.warn("Domain exception - type: {}", ex.getClass().getSimpleName());
-
-        if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("not found")) {
-            return Mono.just(buildResponse(
-                    HttpStatus.NOT_FOUND,
-                    "Not Found",
-                    "Requested maintenance order was not found"));
-        }
-
-        return Mono.just(buildResponse(
-                HttpStatus.UNPROCESSABLE_ENTITY,
-                "Unprocessable Entity",
-                "Business rule violation or unprocessable entity"));
-    }
 
     @ExceptionHandler(WebExchangeBindException.class)
     public Mono<ResponseEntity<Map<String, Object>>> handleValidation(WebExchangeBindException ex) {
@@ -74,50 +57,21 @@ public class GlobalExceptionHandler {
         return Mono.just(ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body));
     }
 
-    @ExceptionHandler(ServerWebInputException.class)
-    public Mono<ResponseEntity<Map<String, Object>>> handleServerWebInput(ServerWebInputException ex) {
-        log.warn("Malformed input - type: {}", ex.getClass().getSimpleName());
-        return Mono.just(buildResponse(
-                HttpStatus.BAD_REQUEST,
-                "Bad Request",
-                "Malformed request payload or invalid parameter format"));
-    }
+    @ExceptionHandler(DomainException.class)
+    public Mono<ResponseEntity<Map<String, Object>>> handleDomain(DomainException ex) {
+        log.warn("Domain exception - type: {}", ex.getClass().getSimpleName());
 
-    @ExceptionHandler(AuthenticationException.class)
-    public Mono<ResponseEntity<Map<String, Object>>> handleAuthentication(AuthenticationException ex) {
-        log.warn("Authentication failure - type: {}", ex.getClass().getSimpleName());
-        return Mono.just(buildResponse(
-                HttpStatus.UNAUTHORIZED,
-                "Unauthorized",
-                "Authentication required or invalid credentials"));
-    }
+        if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("not found")) {
+            return Mono.just(buildResponse(
+                    HttpStatus.NOT_FOUND,
+                    "Not Found",
+                    "Requested maintenance order was not found"));
+        }
 
-    @ExceptionHandler(AccessDeniedException.class)
-    public Mono<ResponseEntity<Map<String, Object>>> handleAccessDenied(AccessDeniedException ex) {
-        log.warn("Access denied - type: {}", ex.getClass().getSimpleName());
         return Mono.just(buildResponse(
-                HttpStatus.FORBIDDEN,
-                "Forbidden",
-                "Access denied: insufficient permissions"));
-    }
-
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public Mono<ResponseEntity<Map<String, Object>>> handleDataIntegrity(DataIntegrityViolationException ex) {
-        log.warn("Data integrity conflict - type: {}", ex.getClass().getSimpleName());
-        return Mono.just(buildResponse(
-                HttpStatus.CONFLICT,
-                "Conflict",
-                "Data integrity conflict in persistent storage"));
-    }
-
-    @ExceptionHandler(ResponseStatusException.class)
-    public Mono<ResponseEntity<Map<String, Object>>> handleResponseStatus(ResponseStatusException ex) {
-        log.warn("Response status error - status: {}, type: {}",
-                ex.getStatusCode().value(), ex.getClass().getSimpleName());
-        return Mono.just(buildResponse(
-                HttpStatus.resolve(ex.getStatusCode().value()),
-                "Resource Error",
-                "Request cannot be processed by the server"));
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "Unprocessable Entity",
+                "Business rule violation or unprocessable entity"));
     }
 
     @ExceptionHandler(UpstreamServiceException.class)
@@ -135,12 +89,56 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public Mono<ResponseEntity<Map<String, Object>>> handleGeneric(
+    public Mono<ResponseEntity<Map<String, Object>>> handleException(
             Exception ex, ServerWebExchange exchange) {
         String errorRef = UUID.randomUUID().toString().substring(0, 8);
+        String method = resolveMethod(exchange);
+        String path = resolveSanitizedPath(exchange);
+        String type = ex.getClass().getSimpleName();
+
+        if (ex instanceof AccessDeniedException) {
+            log.warn("Access denied [ref={}, method={}, path={}, type={}]", errorRef, method, path, type);
+            return Mono.just(buildResponse(
+                    HttpStatus.FORBIDDEN,
+                    "Forbidden",
+                    "Access denied: insufficient permissions"));
+        }
+
+        if (ex instanceof AuthenticationException) {
+            log.warn("Authentication failure [ref={}, method={}, path={}, type={}]", errorRef, method, path, type);
+            return Mono.just(buildResponse(
+                    HttpStatus.UNAUTHORIZED,
+                    "Unauthorized",
+                    "Authentication required or invalid credentials"));
+        }
+
+        if (ex instanceof ServerWebInputException) {
+            log.warn("Malformed input [ref={}, method={}, path={}, type={}]", errorRef, method, path, type);
+            return Mono.just(buildResponse(
+                    HttpStatus.BAD_REQUEST,
+                    "Bad Request",
+                    "Malformed request payload or invalid parameter format"));
+        }
+
+        if (ex instanceof ResponseStatusException rse) {
+            log.warn("Response status error [ref={}, method={}, path={}, status={}, type={}]",
+                    errorRef, method, path, rse.getStatusCode().value(), type);
+            return Mono.just(buildResponse(
+                    HttpStatus.resolve(rse.getStatusCode().value()),
+                    "Resource Error",
+                    "Request cannot be processed by the server"));
+        }
+
+        if (ex instanceof DataIntegrityViolationException) {
+            log.warn("Data integrity conflict [ref={}, method={}, path={}, type={}]", errorRef, method, path, type);
+            return Mono.just(buildResponse(
+                    HttpStatus.CONFLICT,
+                    "Conflict",
+                    "Data integrity conflict in persistent storage"));
+        }
+
         log.error("Unhandled server error [ref={}, method={}, path={}, type={}, cause={}]",
-                errorRef, resolveMethod(exchange), resolveSanitizedPath(exchange),
-                ex.getClass().getSimpleName(), resolveCauseType(ex));
+                errorRef, method, path, type, resolveCauseType(ex));
         return Mono.just(buildResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Internal Server Error",
