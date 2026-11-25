@@ -72,12 +72,4 @@ public class AssignWorkshopRequest {
     @JsonAlias({"diagnosticoInicial", "initialDiagnosis", "trabajoRealizar", "workDescription", "diagnostico"})
     @Schema(description = "Diagnóstico inicial o trabajos a ejecutar", example = "Cambio de amortiguadores y alineamiento")
     private String initialDiagnosis;
-
-    public String getWorkDescription() {
-        return initialDiagnosis;
-    }
-
-    public void setWorkDescription(String workDescription) {
-        this.initialDiagnosis = workDescription;
-    }
 }

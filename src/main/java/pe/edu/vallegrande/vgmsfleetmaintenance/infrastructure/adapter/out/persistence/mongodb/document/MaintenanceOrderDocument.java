@@ -100,20 +100,4 @@ public class MaintenanceOrderDocument {
     @LastModifiedDate
     @Field("updatedAt")
     private LocalDateTime updatedAt;
-
-    public String getOrderNumber() {
-        return orderCode;
-    }
-
-    public void setOrderNumber(String orderNumber) {
-        this.orderCode = orderNumber;
-    }
-
-    public String getIssueDescription() {
-        return failureReason;
-    }
-
-    public void setIssueDescription(String issueDescription) {
-        this.failureReason = issueDescription;
-    }
 }
