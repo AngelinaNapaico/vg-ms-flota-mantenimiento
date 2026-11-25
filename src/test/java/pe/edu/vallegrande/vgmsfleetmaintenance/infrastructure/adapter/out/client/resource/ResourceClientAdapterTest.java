@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -14,6 +15,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.net.URI;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -122,5 +124,29 @@ class ResourceClientAdapterTest {
                     assertEquals("TRANSPORT:RuntimeException", ex.getTechnicalCause());
                 })
                 .verify();
+    }
+
+    @Test
+    @DisplayName("Should reject inter-service calls when bearer token is missing without issuing HTTP requests")
+    void shouldRejectInterServiceCallsWithoutBearerToken() {
+        AtomicInteger callCount = new AtomicInteger(0);
+        ExchangeFunction exchangeFunction = request -> {
+            callCount.incrementAndGet();
+            return Mono.just(ClientResponse.create(HttpStatus.OK).build());
+        };
+        ResourceClientAdapter adapter = new ResourceClientAdapter(
+                WebClient.builder().exchangeFunction(exchangeFunction), "http://localhost:9004");
+
+        StepVerifier.create(adapter.validateResourceBelongsToEntity("rec-001", "ent-001", ""))
+                .expectError(AuthenticationCredentialsNotFoundException.class)
+                .verify();
+        StepVerifier.create(adapter.disableResourceForMaintenance("rec-001", null))
+                .expectError(AuthenticationCredentialsNotFoundException.class)
+                .verify();
+        StepVerifier.create(adapter.enableResourceToAvailable("rec-001", "   "))
+                .expectError(AuthenticationCredentialsNotFoundException.class)
+                .verify();
+
+        assertEquals(0, callCount.get());
     }
 }

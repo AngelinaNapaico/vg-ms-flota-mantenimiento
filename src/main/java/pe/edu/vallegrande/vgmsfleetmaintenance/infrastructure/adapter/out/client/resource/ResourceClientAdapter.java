@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -18,8 +19,8 @@ import reactor.core.publisher.Mono;
 
 /**
  * Outbound WebClient adapter communicating with the external resources microservice.
- * Propagates authorization tokens, validates ownership integrity, logs technical
- * upstream failures internally, and translates errors into domain or upstream exceptions.
+ * Enforces mandatory Bearer token propagation, validates ownership integrity,
+ * logs sanitized diagnostic metadata, and translates upstream failures cleanly.
  */
 @Slf4j
 @Component
@@ -35,31 +36,33 @@ public class ResourceClientAdapter implements ResourceClientPort {
                 .build();
     }
 
-    private Mono<String> resolveCurrentToken() {
+    private Mono<String> requireBearerToken(String explicitToken) {
+        if (explicitToken != null && !explicitToken.isBlank()) {
+            return Mono.just(explicitToken.trim());
+        }
         return ReactiveSecurityContextHolder.getContext()
                 .map(SecurityContext::getAuthentication)
                 .filter(auth -> auth instanceof JwtAuthenticationToken)
                 .cast(JwtAuthenticationToken.class)
                 .map(jwt -> jwt.getToken().getTokenValue())
-                .defaultIfEmpty("");
+                .filter(token -> token != null && !token.isBlank())
+                .switchIfEmpty(Mono.error(new AuthenticationCredentialsNotFoundException(
+                        "Authenticated bearer token is required for inter-service communication")));
     }
 
     @Override
     public Mono<Void> disableResourceForMaintenance(String resourceId) {
-        return resolveCurrentToken()
-                .flatMap(token -> disableResourceForMaintenance(resourceId, token));
+        return disableResourceForMaintenance(resourceId, null);
     }
 
     @Override
     public Mono<Void> enableResourceToAvailable(String resourceId) {
-        return resolveCurrentToken()
-                .flatMap(token -> enableResourceToAvailable(resourceId, token));
+        return enableResourceToAvailable(resourceId, null);
     }
 
     @Override
     public Mono<Void> validateResourceBelongsToEntity(String resourceId, String entityId) {
-        return resolveCurrentToken()
-                .flatMap(token -> validateResourceBelongsToEntity(resourceId, entityId, token));
+        return validateResourceBelongsToEntity(resourceId, entityId, null);
     }
 
     @Override
@@ -71,14 +74,9 @@ public class ResourceClientAdapter implements ResourceClientPort {
             return Mono.error(new DomainException("Entity ID is required for resource validation"));
         }
 
-        var requestSpec = webClient.get()
-                .uri(uriBuilder -> uriBuilder.path("/{id}").build(resourceId));
-
-        if (bearerToken != null && !bearerToken.isBlank()) {
-            requestSpec.header(HttpHeaders.AUTHORIZATION, "Bearer " + bearerToken);
-        }
-
-        return requestSpec
+        return requireBearerToken(bearerToken).flatMap(resolvedToken -> webClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/{id}").build(resourceId))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + resolvedToken)
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, response -> response.createException()
                         .flatMap(err -> {
@@ -93,7 +91,7 @@ public class ResourceClientAdapter implements ResourceClientPort {
                             int status = response.statusCode().value();
                             String technicalCause = buildTechnicalCause(status, err);
                             log.error("Resource service 5xx failure [op=validate, resourceId={}, status={}, cause={}]",
-                                    resourceId, status, technicalCause, err);
+                                    resourceId, status, technicalCause);
                             return Mono.error(new UpstreamServiceException(
                                     "External resource service is temporarily unavailable",
                                     "validate",
@@ -115,14 +113,14 @@ public class ResourceClientAdapter implements ResourceClientPort {
                         err -> {
                             String technicalCause = buildTechnicalCause(null, err);
                             log.error("Resource service transport failure [op=validate, resourceId={}, cause={}]",
-                                    resourceId, technicalCause, err);
+                                    resourceId, technicalCause);
                             return new UpstreamServiceException(
                                     "Failed to verify resource with external service",
                                     "validate",
                                     null,
                                     technicalCause);
                         })
-                .then();
+                .then());
     }
 
     @Override
@@ -130,17 +128,12 @@ public class ResourceClientAdapter implements ResourceClientPort {
         OperationalResourceDTO payload = ResourceClientMapper.toDTO(resourceId, "EN_MANTENIMIENTO");
         log.info("Requesting status change to {} for resource {}", payload.getAvailability(), resourceId);
 
-        var requestSpec = webClient.patch()
+        return requireBearerToken(bearerToken).flatMap(resolvedToken -> webClient.patch()
                 .uri(uriBuilder -> uriBuilder
                         .path("/{id}/availability")
                         .queryParam("availability", payload.getAvailability())
-                        .build(resourceId));
-
-        if (bearerToken != null && !bearerToken.isBlank()) {
-            requestSpec.header(HttpHeaders.AUTHORIZATION, "Bearer " + bearerToken);
-        }
-
-        return requestSpec
+                        .build(resourceId))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + resolvedToken)
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, response -> response.createException()
                         .flatMap(err -> {
@@ -155,7 +148,7 @@ public class ResourceClientAdapter implements ResourceClientPort {
                             int status = response.statusCode().value();
                             String technicalCause = buildTechnicalCause(status, err);
                             log.error("Resource service 5xx failure [op=disable, resourceId={}, status={}, cause={}]",
-                                    resourceId, status, technicalCause, err);
+                                    resourceId, status, technicalCause);
                             return Mono.error(new UpstreamServiceException(
                                     "External resource service is temporarily unavailable",
                                     "disable",
@@ -167,7 +160,7 @@ public class ResourceClientAdapter implements ResourceClientPort {
                         err -> {
                             String technicalCause = buildTechnicalCause(null, err);
                             log.error("Resource service transport failure [op=disable, resourceId={}, cause={}]",
-                                    resourceId, technicalCause, err);
+                                    resourceId, technicalCause);
                             return new UpstreamServiceException(
                                     "Failed to communicate with external resource service",
                                     "disable",
@@ -179,7 +172,7 @@ public class ResourceClientAdapter implements ResourceClientPort {
                 .doOnError(err -> log.warn(
                         "Failed to notify resource service for resourceId: {} - type: {}",
                         resourceId, err.getClass().getSimpleName()))
-                .then();
+                .then());
     }
 
     @Override
@@ -187,17 +180,12 @@ public class ResourceClientAdapter implements ResourceClientPort {
         OperationalResourceDTO payload = ResourceClientMapper.toDTO(resourceId, "DISPONIBLE");
         log.info("Requesting status change to {} for resource {}", payload.getAvailability(), resourceId);
 
-        var requestSpec = webClient.patch()
+        return requireBearerToken(bearerToken).flatMap(resolvedToken -> webClient.patch()
                 .uri(uriBuilder -> uriBuilder
                         .path("/{id}/availability")
                         .queryParam("availability", payload.getAvailability())
-                        .build(resourceId));
-
-        if (bearerToken != null && !bearerToken.isBlank()) {
-            requestSpec.header(HttpHeaders.AUTHORIZATION, "Bearer " + bearerToken);
-        }
-
-        return requestSpec
+                        .build(resourceId))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + resolvedToken)
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, response -> response.createException()
                         .flatMap(err -> {
@@ -212,7 +200,7 @@ public class ResourceClientAdapter implements ResourceClientPort {
                             int status = response.statusCode().value();
                             String technicalCause = buildTechnicalCause(status, err);
                             log.error("Resource service 5xx failure [op=enable, resourceId={}, status={}, cause={}]",
-                                    resourceId, status, technicalCause, err);
+                                    resourceId, status, technicalCause);
                             return Mono.error(new UpstreamServiceException(
                                     "External resource service is temporarily unavailable",
                                     "enable",
@@ -224,7 +212,7 @@ public class ResourceClientAdapter implements ResourceClientPort {
                         err -> {
                             String technicalCause = buildTechnicalCause(null, err);
                             log.error("Resource service transport failure [op=enable, resourceId={}, cause={}]",
-                                    resourceId, technicalCause, err);
+                                    resourceId, technicalCause);
                             return new UpstreamServiceException(
                                     "Failed to communicate with external resource service",
                                     "enable",
@@ -236,7 +224,7 @@ public class ResourceClientAdapter implements ResourceClientPort {
                 .doOnError(err -> log.warn(
                         "Failed to restore availability in resource service for resourceId: {} - type: {}",
                         resourceId, err.getClass().getSimpleName()))
-                .then();
+                .then());
     }
 
     private String buildTechnicalCause(Integer status, Throwable err) {

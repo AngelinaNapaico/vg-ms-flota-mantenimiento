@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -48,6 +49,7 @@ public class UpdateMaintenanceOrderRequest {
     private String remarks;
 
     @Size(max = 100, message = "El ID del incidente no puede exceder 100 caracteres")
+    @Pattern(regexp = "^$|^[a-fA-F0-9]{24}$|^[a-zA-Z0-9_-]+$", message = "El ID del incidente contiene caracteres no permitidos")
     @JsonProperty("incidentId")
     @JsonAlias({"incidenteId", "incidentId"})
     @Schema(description = "ID del incidente si proviene de un siniestro", example = "7b5f792c7c84938ece21b113")

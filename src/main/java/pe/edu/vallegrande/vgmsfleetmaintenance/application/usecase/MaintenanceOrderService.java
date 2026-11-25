@@ -23,11 +23,12 @@ import reactor.core.publisher.Mono;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Implementation of fleet maintenance lifecycle use cases.
  * Handles order creation, updates, workshop assignment, technical discharge,
- * and cancellation with comprehensive audit logging and domain invariant enforcement.
+ * and cancellation with durable audit logging and domain invariant enforcement.
  */
 @Slf4j
 @Service
@@ -91,8 +92,13 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                 resolveEffectiveEntityId(order.getEntityId()).flatMap(effectiveTenant -> {
                     order.setEntityId(effectiveTenant);
 
-                    return resourceClientPort
-                            .validateResourceBelongsToEntity(order.getResourceId(), effectiveTenant, token)
+                    Mono<Void> validateResource = (token != null && !token.isBlank())
+                            ? resourceClientPort.validateResourceBelongsToEntity(
+                            order.getResourceId(), effectiveTenant, token)
+                            : resourceClientPort.validateResourceBelongsToEntity(
+                            order.getResourceId(), effectiveTenant);
+
+                    return validateResource
                             .then(repositoryPort.existsByResourceIdAndOrderStatusNotIn(order.getResourceId(),
                                     TERMINAL_STATUSES))
                             .flatMap(existsActive -> {
@@ -130,7 +136,7 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                                                 actor, saved.getEntityId(), "SUCCESS", correlationId, null)
                                                 .thenReturn(saved));
                             })
-                            .onErrorResume(err -> audit("CREATE", null, order.getResourceId(),
+                            .onErrorResume(err -> audit("CREATE", order.getOrderCode(), order.getResourceId(),
                                     actor, effectiveTenant, "FAILED", correlationId, err)
                                     .then(Mono.error(err)));
                 }));
@@ -140,71 +146,91 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
     public Mono<MaintenanceOrder> update(String id, MaintenanceOrder updatedDetails) {
         log.info("Updating editable header and workshop fields for maintenance order: {}", id);
         String correlationId = UUID.randomUUID().toString();
+        AtomicReference<MaintenanceOrder> loadedOrder = new AtomicReference<>();
 
-        return resolveCurrentActor().flatMap(actor -> findById(id)
-                .flatMap(order -> Mono.fromCallable(() -> {
-                    order.updateDetails(
-                            updatedDetails.getFailureReason(),
-                            updatedDetails.getReportedMileage(),
-                            updatedDetails.getPriority(),
-                            updatedDetails.getRemarks(),
-                            updatedDetails.getIncidentId(),
-                            updatedDetails.getWorkshopDetail());
-                    return order;
-                }).flatMap(repositoryPort::save)
-                        .flatMap(saved -> audit("UPDATE", saved.getOrderCode(), saved.getResourceId(),
-                                actor, saved.getEntityId(), "SUCCESS", correlationId, null)
-                                .thenReturn(saved)))
-                .onErrorResume(err -> audit("UPDATE", id, null, actor, null, "FAILED", correlationId, err)
-                        .then(Mono.error(err))));
+        return resolveCurrentActor().flatMap(actor ->
+                resolveCallerTenant().flatMap(callerTenant -> findById(id)
+                        .flatMap(order -> {
+                            loadedOrder.set(order);
+                            return Mono.<MaintenanceOrder>fromCallable(() -> {
+                                order.updateDetails(
+                                        updatedDetails.getFailureReason(),
+                                        updatedDetails.getReportedMileage(),
+                                        updatedDetails.getPriority(),
+                                        updatedDetails.getRemarks(),
+                                        updatedDetails.getIncidentId(),
+                                        updatedDetails.getWorkshopDetail());
+                                return order;
+                            }).flatMap(repositoryPort::save)
+                                    .flatMap(saved -> audit("UPDATE", saved.getOrderCode(), saved.getResourceId(),
+                                            actor, saved.getEntityId(), "SUCCESS", correlationId, null)
+                                            .thenReturn(saved));
+                        })
+                        .onErrorResume(err -> auditFailure("UPDATE", id, loadedOrder.get(),
+                                actor, callerTenant, correlationId, err))));
     }
 
     @Override
     public Mono<MaintenanceOrder> assignWorkshop(String id, WorkshopDetail workshop) {
         String correlationId = UUID.randomUUID().toString();
+        AtomicReference<MaintenanceOrder> loadedOrder = new AtomicReference<>();
 
-        return resolveCurrentActor().flatMap(actor -> findById(id)
-                .flatMap(order -> Mono.fromCallable(() -> {
-                    order.assignWorkshop(workshop);
-                    return order;
-                }).flatMap(repositoryPort::save)
-                        .flatMap(saved -> audit("ASSIGN_WORKSHOP", saved.getOrderCode(), saved.getResourceId(),
-                                actor, saved.getEntityId(), "SUCCESS", correlationId, null)
-                                .thenReturn(saved)))
-                .onErrorResume(err -> audit("ASSIGN_WORKSHOP", id, null, actor, null, "FAILED", correlationId, err)
-                        .then(Mono.error(err))));
+        return resolveCurrentActor().flatMap(actor ->
+                resolveCallerTenant().flatMap(callerTenant -> findById(id)
+                        .flatMap(order -> {
+                            loadedOrder.set(order);
+                            return Mono.<MaintenanceOrder>fromCallable(() -> {
+                                order.assignWorkshop(workshop);
+                                return order;
+                            }).flatMap(repositoryPort::save)
+                                    .flatMap(saved -> audit("ASSIGN_WORKSHOP", saved.getOrderCode(), saved.getResourceId(),
+                                            actor, saved.getEntityId(), "SUCCESS", correlationId, null)
+                                            .thenReturn(saved));
+                        })
+                        .onErrorResume(err -> auditFailure("ASSIGN_WORKSHOP", id, loadedOrder.get(),
+                                actor, callerTenant, correlationId, err))));
     }
 
     @Override
     public Mono<MaintenanceOrder> startRepair(String id) {
         String correlationId = UUID.randomUUID().toString();
+        AtomicReference<MaintenanceOrder> loadedOrder = new AtomicReference<>();
 
-        return resolveCurrentActor().flatMap(actor -> findById(id)
-                .flatMap(order -> Mono.fromCallable(() -> {
-                    order.startRepair();
-                    return order;
-                }).flatMap(repositoryPort::save)
-                        .flatMap(saved -> audit("START_REPAIR", saved.getOrderCode(), saved.getResourceId(),
-                                actor, saved.getEntityId(), "SUCCESS", correlationId, null)
-                                .thenReturn(saved)))
-                .onErrorResume(err -> audit("START_REPAIR", id, null, actor, null, "FAILED", correlationId, err)
-                        .then(Mono.error(err))));
+        return resolveCurrentActor().flatMap(actor ->
+                resolveCallerTenant().flatMap(callerTenant -> findById(id)
+                        .flatMap(order -> {
+                            loadedOrder.set(order);
+                            return Mono.<MaintenanceOrder>fromCallable(() -> {
+                                order.startRepair();
+                                return order;
+                            }).flatMap(repositoryPort::save)
+                                    .flatMap(saved -> audit("START_REPAIR", saved.getOrderCode(), saved.getResourceId(),
+                                            actor, saved.getEntityId(), "SUCCESS", correlationId, null)
+                                            .thenReturn(saved));
+                        })
+                        .onErrorResume(err -> auditFailure("START_REPAIR", id, loadedOrder.get(),
+                                actor, callerTenant, correlationId, err))));
     }
 
     @Override
     public Mono<MaintenanceOrder> passToQualityControl(String id) {
         String correlationId = UUID.randomUUID().toString();
+        AtomicReference<MaintenanceOrder> loadedOrder = new AtomicReference<>();
 
-        return resolveCurrentActor().flatMap(actor -> findById(id)
-                .flatMap(order -> Mono.fromCallable(() -> {
-                    order.passToQualityControl();
-                    return order;
-                }).flatMap(repositoryPort::save)
-                        .flatMap(saved -> audit("QUALITY_CONTROL", saved.getOrderCode(), saved.getResourceId(),
-                                actor, saved.getEntityId(), "SUCCESS", correlationId, null)
-                                .thenReturn(saved)))
-                .onErrorResume(err -> audit("QUALITY_CONTROL", id, null, actor, null, "FAILED", correlationId, err)
-                        .then(Mono.error(err))));
+        return resolveCurrentActor().flatMap(actor ->
+                resolveCallerTenant().flatMap(callerTenant -> findById(id)
+                        .flatMap(order -> {
+                            loadedOrder.set(order);
+                            return Mono.<MaintenanceOrder>fromCallable(() -> {
+                                order.passToQualityControl();
+                                return order;
+                            }).flatMap(repositoryPort::save)
+                                    .flatMap(saved -> audit("QUALITY_CONTROL", saved.getOrderCode(), saved.getResourceId(),
+                                            actor, saved.getEntityId(), "SUCCESS", correlationId, null)
+                                            .thenReturn(saved));
+                        })
+                        .onErrorResume(err -> auditFailure("QUALITY_CONTROL", id, loadedOrder.get(),
+                                actor, callerTenant, correlationId, err))));
     }
 
     @Override
@@ -217,31 +243,36 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                                                           String token) {
         log.info("Issuing technical discharge for order: {}", id);
         String correlationId = UUID.randomUUID().toString();
+        AtomicReference<MaintenanceOrder> loadedOrder = new AtomicReference<>();
 
-        return resolveCurrentActor().flatMap(actor -> findById(id)
-                .flatMap(order -> Mono.fromCallable(() -> {
-                    order.issueTechnicalDischarge(dischargeReport);
-                    return order;
-                }).flatMap(modifiedOrder -> {
-                    Mono<Void> notifyResource = (token != null && !token.isBlank())
-                            ? resourceClientPort.enableResourceToAvailable(
-                            modifiedOrder.getResourceId(), token)
-                            : resourceClientPort.enableResourceToAvailable(
-                            modifiedOrder.getResourceId());
+        return resolveCurrentActor().flatMap(actor ->
+                resolveCallerTenant().flatMap(callerTenant -> findById(id)
+                        .flatMap(order -> {
+                            loadedOrder.set(order);
+                            return Mono.fromCallable(() -> {
+                                order.issueTechnicalDischarge(dischargeReport);
+                                return order;
+                            }).flatMap(modifiedOrder -> {
+                                Mono<Void> notifyResource = (token != null && !token.isBlank())
+                                        ? resourceClientPort.enableResourceToAvailable(
+                                        modifiedOrder.getResourceId(), token)
+                                        : resourceClientPort.enableResourceToAvailable(
+                                        modifiedOrder.getResourceId());
 
-                    return notifyResource
-                            .onErrorResume(err -> {
-                                log.warn("Notice: Could not update resource availability in vg-ms-recursos (upstream unavailable), order completed locally. Type: {}",
-                                        err.getClass().getSimpleName());
-                                return Mono.empty();
-                            })
-                            .then(repositoryPort.save(modifiedOrder))
-                            .flatMap(saved -> audit("TECHNICAL_DISCHARGE", saved.getOrderCode(), saved.getResourceId(),
-                                    actor, saved.getEntityId(), "SUCCESS", correlationId, null)
-                                    .thenReturn(saved));
-                }))
-                .onErrorResume(err -> audit("TECHNICAL_DISCHARGE", id, null, actor, null, "FAILED", correlationId, err)
-                        .then(Mono.error(err))));
+                                return notifyResource
+                                        .onErrorResume(err -> {
+                                            log.warn("Notice: Could not update resource availability in vg-ms-recursos (upstream unavailable), order completed locally. Type: {}",
+                                                    err.getClass().getSimpleName());
+                                            return Mono.empty();
+                                        })
+                                        .then(repositoryPort.save(modifiedOrder))
+                                        .flatMap(saved -> audit("TECHNICAL_DISCHARGE", saved.getOrderCode(), saved.getResourceId(),
+                                                actor, saved.getEntityId(), "SUCCESS", correlationId, null)
+                                                .thenReturn(saved));
+                            });
+                        })
+                        .onErrorResume(err -> auditFailure("TECHNICAL_DISCHARGE", id, loadedOrder.get(),
+                                actor, callerTenant, correlationId, err))));
     }
 
     @Override
@@ -253,31 +284,58 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
     public Mono<MaintenanceOrder> cancel(String id, String reason, String remarks, String token) {
         log.info("Canceling maintenance order: {}", id);
         String correlationId = UUID.randomUUID().toString();
+        AtomicReference<MaintenanceOrder> loadedOrder = new AtomicReference<>();
 
-        return resolveCurrentActor().flatMap(actor -> findById(id)
-                .flatMap(order -> Mono.fromCallable(() -> {
-                    order.cancel(reason);
-                    return order;
-                }).flatMap(cancelledOrder -> {
-                    Mono<Void> notifyResource = (token != null && !token.isBlank())
-                            ? resourceClientPort.enableResourceToAvailable(
-                            cancelledOrder.getResourceId(), token)
-                            : resourceClientPort.enableResourceToAvailable(
-                            cancelledOrder.getResourceId());
+        return resolveCurrentActor().flatMap(actor ->
+                resolveCallerTenant().flatMap(callerTenant -> findById(id)
+                        .flatMap(order -> {
+                            loadedOrder.set(order);
+                            return Mono.fromCallable(() -> {
+                                order.cancel(reason);
+                                return order;
+                            }).flatMap(cancelledOrder -> {
+                                Mono<Void> notifyResource = (token != null && !token.isBlank())
+                                        ? resourceClientPort.enableResourceToAvailable(
+                                        cancelledOrder.getResourceId(), token)
+                                        : resourceClientPort.enableResourceToAvailable(
+                                        cancelledOrder.getResourceId());
 
-                    return notifyResource
-                            .onErrorResume(err -> {
-                                log.warn("Notice: Could not restore resource availability in vg-ms-recursos (upstream unavailable), order cancelled locally. Type: {}",
-                                        err.getClass().getSimpleName());
-                                return Mono.empty();
-                            })
-                            .then(repositoryPort.save(cancelledOrder))
-                            .flatMap(saved -> audit("CANCEL", saved.getOrderCode(), saved.getResourceId(),
-                                    actor, saved.getEntityId(), "SUCCESS", correlationId, null)
-                                    .thenReturn(saved));
-                }))
-                .onErrorResume(err -> audit("CANCEL", id, null, actor, null, "FAILED", correlationId, err)
-                        .then(Mono.error(err))));
+                                return notifyResource
+                                        .onErrorResume(err -> {
+                                            log.warn("Notice: Could not restore resource availability in vg-ms-recursos (upstream unavailable), order cancelled locally. Type: {}",
+                                                    err.getClass().getSimpleName());
+                                            return Mono.empty();
+                                        })
+                                        .then(repositoryPort.save(cancelledOrder))
+                                        .flatMap(saved -> audit("CANCEL", saved.getOrderCode(), saved.getResourceId(),
+                                                actor, saved.getEntityId(), "SUCCESS", correlationId, null)
+                                                .thenReturn(saved));
+                            });
+                        })
+                        .onErrorResume(err -> auditFailure("CANCEL", id, loadedOrder.get(),
+                                actor, callerTenant, correlationId, err))));
+    }
+
+    private Mono<MaintenanceOrder> auditFailure(
+            String action,
+            String orderId,
+            MaintenanceOrder loadedOrder,
+            String actor,
+            String callerTenant,
+            String correlationId,
+            Throwable error) {
+        String orderRef = (loadedOrder != null && loadedOrder.getOrderCode() != null)
+                ? loadedOrder.getOrderCode()
+                : orderId;
+        String resourceRef = (loadedOrder != null && loadedOrder.getResourceId() != null)
+                ? loadedOrder.getResourceId()
+                : orderId;
+        String tenantRef = (loadedOrder != null && loadedOrder.getEntityId() != null)
+                ? loadedOrder.getEntityId()
+                : callerTenant;
+
+        return audit(action, orderRef, resourceRef, actor, tenantRef, "FAILED", correlationId, error)
+                .then(Mono.error(error));
     }
 
     private Mono<Void> audit(String action, String orderCode, String resourceId, String actor, String tenant,
@@ -297,28 +355,43 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                 auditEntry.correlationId(),
                 auditEntry.errorType());
 
-        if (auditLogRepositoryPort != null) {
-            return auditLogRepositoryPort
-                    .recordAudit(
-                            auditEntry.action(),
-                            auditEntry.orderCode(),
-                            auditEntry.resourceId(),
-                            auditEntry.actor(),
-                            auditEntry.tenant(),
-                            auditEntry.result(),
-                            auditEntry.correlationId(),
-                            auditEntry.errorType())
-                    .onErrorResume(err -> {
-                        log.warn("Notice: Failed to persist durable audit log: {}", err.getClass().getSimpleName());
-                        return Mono.empty();
-                    });
+        if (auditLogRepositoryPort == null) {
+            return Mono.empty();
         }
-        return Mono.empty();
+
+        Mono<Void> persistMono = auditLogRepositoryPort.recordAudit(
+                auditEntry.action(),
+                auditEntry.orderCode(),
+                auditEntry.resourceId(),
+                auditEntry.actor(),
+                auditEntry.tenant(),
+                auditEntry.result(),
+                auditEntry.correlationId(),
+                auditEntry.errorType());
+
+        if ("SUCCESS".equals(auditEntry.result())) {
+            return persistMono.onErrorMap(err -> {
+                log.error("Failed to persist mandatory durable audit log [action={}, correlationId={}, type={}]",
+                        auditEntry.action(), auditEntry.correlationId(), err.getClass().getSimpleName());
+                return new DomainException("Failed to persist durable audit log for operation");
+            });
+        }
+
+        return persistMono.onErrorResume(err -> {
+            log.error("Failed to persist failure audit log [action={}, correlationId={}, type={}]",
+                    auditEntry.action(), auditEntry.correlationId(), err.getClass().getSimpleName());
+            return Mono.empty();
+        });
     }
 
     private Mono<String> resolveCurrentActor() {
         return authClientPort.getCurrentUsername()
                 .defaultIfEmpty("ANONYMOUS");
+    }
+
+    private Mono<String> resolveCallerTenant() {
+        return authClientPort.getCurrentEntityId()
+                .defaultIfEmpty("GLOBAL");
     }
 
     private Mono<String> resolveEffectiveEntityId(String requestedEntityId) {

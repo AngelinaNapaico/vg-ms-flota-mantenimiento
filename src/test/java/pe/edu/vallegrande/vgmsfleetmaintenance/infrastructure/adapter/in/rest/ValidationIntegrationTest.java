@@ -85,4 +85,24 @@ class ValidationIntegrationTest {
                 .expectBody()
                 .jsonPath("$.errors").exists();
     }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR_ENTIDAD")
+    @DisplayName("Should return 422 when update incidentId contains disallowed characters")
+    void shouldReturn422WhenUpdateIncidentIdIsInvalid() {
+        String invalidUpdatePayload = """
+            {
+                "incidentId": "invalid$script<>"
+            }
+        """;
+
+        webTestClient.put()
+                .uri("/api/v1/maintenance-orders/order-001")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(invalidUpdatePayload)
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY)
+                .expectBody()
+                .jsonPath("$.errors").exists();
+    }
 }

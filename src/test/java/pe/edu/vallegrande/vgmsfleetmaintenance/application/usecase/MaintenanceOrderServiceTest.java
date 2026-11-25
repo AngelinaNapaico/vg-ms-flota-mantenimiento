@@ -191,4 +191,77 @@ class MaintenanceOrderServiceTest {
 
                 verify(repositoryPort, never()).save(any());
         }
+
+        @Test
+        @DisplayName("Should preserve resourceId and entityId when mutation fails after loading order")
+        void shouldPreserveResourceAndTenantInFailureAudit() {
+                MaintenanceOrder completedOrder = MaintenanceOrder.create(
+                                "ORD-2026-DONE",
+                                "rec-009",
+                                "POL-900",
+                                "ent-policia",
+                                "12345678",
+                                null,
+                                MaintenanceType.PREVENTIVE,
+                                OrderPriority.LOW,
+                                "Routine check",
+                                20000,
+                                null);
+                completedOrder.setId("order-done-1");
+                completedOrder.setOrderStatus(OrderStatus.COMPLETED);
+
+                when(repositoryPort.findById("order-done-1")).thenReturn(Mono.just(completedOrder));
+
+                StepVerifier.create(useCase.cancel("order-done-1", "Duplicate", ""))
+                                .expectError(DomainException.class)
+                                .verify();
+
+                verify(auditLogRepositoryPort, times(1)).recordAudit(
+                                eq("CANCEL"),
+                                eq("ORD-2026-DONE"),
+                                eq("rec-009"),
+                                eq("test-user"),
+                                eq("ent-policia"),
+                                eq("FAILED"),
+                                anyString(),
+                                eq("DomainException"));
+        }
+
+        @Test
+        @DisplayName("Should preserve caller tenant and order reference when target order is not found")
+        void shouldPreserveCallerTenantWhenOrderNotFound() {
+                when(repositoryPort.findById("missing-id")).thenReturn(Mono.empty());
+
+                StepVerifier.create(useCase.startRepair("missing-id"))
+                                .expectError(DomainException.class)
+                                .verify();
+
+                verify(auditLogRepositoryPort, times(1)).recordAudit(
+                                eq("START_REPAIR"),
+                                eq("missing-id"),
+                                eq("missing-id"),
+                                eq("test-user"),
+                                eq("ent-policia"),
+                                eq("FAILED"),
+                                anyString(),
+                                eq("DomainException"));
+        }
+
+        @Test
+        @DisplayName("Should fail operation instead of reporting success when durable audit persistence fails")
+        void shouldFailOperationWhenMandatorySuccessAuditFails() {
+                when(repositoryPort.existsByResourceIdAndOrderStatusNotIn(eq("rec-001"), anyCollection()))
+                                .thenReturn(Mono.just(false));
+                when(resourceClientPort.disableResourceForMaintenance(eq("rec-001"), anyString()))
+                                .thenReturn(Mono.empty());
+                when(repositoryPort.save(any(MaintenanceOrder.class)))
+                                .thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+                when(auditLogRepositoryPort.recordAudit(
+                                eq("CREATE"), any(), any(), any(), any(), eq("SUCCESS"), any(), any()))
+                                .thenReturn(Mono.error(new RuntimeException("Audit store unavailable")));
+
+                StepVerifier.create(useCase.create(newOrder, "mock-token"))
+                                .expectError(DomainException.class)
+                                .verify();
+        }
 }
