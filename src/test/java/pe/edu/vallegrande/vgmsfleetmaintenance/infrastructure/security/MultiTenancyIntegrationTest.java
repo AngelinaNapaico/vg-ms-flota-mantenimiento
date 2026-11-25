@@ -16,6 +16,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.ResourceClientPor
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.document.MaintenanceOrderDocument;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.repository.AuditLogRepository;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persistence.mongodb.repository.MaintenanceOrderRepository;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
@@ -90,6 +91,11 @@ class MultiTenancyIntegrationTest {
 
         when(repository.findById(eq(ORDER_A_ID))).thenReturn(Mono.just(docA));
         when(repository.findById(eq(ORDER_B_ID))).thenReturn(Mono.just(docB));
+        when(repository.findByIdAndEntityId(eq(ORDER_A_ID), eq(ENTITY_A))).thenReturn(Mono.just(docA));
+        when(repository.findByIdAndEntityId(eq(ORDER_B_ID), eq(ENTITY_A))).thenReturn(Mono.empty());
+        when(repository.findByEntityId(eq(ENTITY_A))).thenReturn(Flux.just(docA));
+        when(repository.findByEntityId(eq(ENTITY_B))).thenReturn(Flux.just(docB));
+        when(repository.findAll()).thenReturn(Flux.just(docA, docB));
     }
 
     @Test
@@ -214,5 +220,50 @@ class MultiTenancyIntegrationTest {
                 .uri("/api/v1/maintenance-orders/" + ORDER_B_ID)
                 .exchange()
                 .expectStatus().isOk();
+    }
+
+    @Test
+    @DisplayName("Should return only own tenant orders on list and empty list on foreign entity query")
+    void shouldIsolateListAndEntityQueriesByTenant() {
+        WebTestClient operatorAClient = webTestClient.mutateWith(mockJwt()
+                .authorities(new SimpleGrantedAuthority("ROLE_OPERADOR_ENTIDAD"))
+                .jwt(jwt -> jwt
+                        .subject("operator-a")
+                        .claim("preferred_username", "operator-a")
+                        .claim("eid", ENTITY_A)
+                        .claim("roles", List.of("OPERADOR_ENTIDAD"))));
+
+        operatorAClient.get()
+                .uri("/api/v1/maintenance-orders")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(1)
+                .jsonPath("$[0].orderCode").isEqualTo("ORD-2026-AAAAAA")
+                .jsonPath("$[0].entityId").isEqualTo(ENTITY_A);
+
+        operatorAClient.get()
+                .uri("/api/v1/maintenance-orders/entity/" + ENTITY_B)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("Should allow super admin to list orders across all tenants")
+    void shouldAllowSuperAdminToListAllTenants() {
+        webTestClient.mutateWith(mockJwt()
+                        .authorities(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))
+                        .jwt(jwt -> jwt
+                                .subject("super-admin")
+                                .claim("preferred_username", "super-admin")
+                                .claim("roles", List.of("SUPER_ADMIN"))))
+                .get()
+                .uri("/api/v1/maintenance-orders")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(2);
     }
 }

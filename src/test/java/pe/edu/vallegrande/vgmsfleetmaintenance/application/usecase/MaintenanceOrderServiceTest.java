@@ -19,9 +19,11 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.domain.port.out.ResourceClientPor
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.MaintenanceType;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderPriority;
 import pe.edu.vallegrande.vgmsfleetmaintenance.domain.vo.OrderStatus;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -73,7 +75,8 @@ class MaintenanceOrderServiceTest {
         @Test
         @DisplayName("Should create order and trigger resource disabling in vg-ms-recursos via outbound port")
         void shouldCreateOrderSuccessfully() {
-                when(repositoryPort.existsByResourceIdAndOrderStatusNotIn(eq("rec-001"), anyCollection()))
+                when(repositoryPort.existsByResourceIdAndEntityIdAndOrderStatusNotIn(
+                                eq("rec-001"), eq("ent-policia"), anyCollection()))
                                 .thenReturn(Mono.just(false));
 
                 when(resourceClientPort.disableResourceForMaintenance(eq("rec-001"), anyString()))
@@ -89,6 +92,15 @@ class MaintenanceOrderServiceTest {
                                 .verifyComplete();
 
                 verify(resourceClientPort, times(1)).disableResourceForMaintenance(eq("rec-001"), eq("mock-token"));
+                verify(auditLogRepositoryPort, times(1)).recordAudit(
+                                eq("CREATE"),
+                                argThat(code -> code != null && code.startsWith("ORD-")),
+                                eq("rec-001"),
+                                eq("test-user"),
+                                eq("ent-policia"),
+                                eq("SUCCESS"),
+                                argThat(id -> id != null && !id.isBlank()),
+                                eq("NONE"));
         }
 
         @Test
@@ -109,7 +121,7 @@ class MaintenanceOrderServiceTest {
                 existingOrder.setId("orden-mongo-001");
                 existingOrder.setOrderStatus(OrderStatus.IN_WORKSHOP);
 
-                when(repositoryPort.findById("orden-mongo-001"))
+                when(repositoryPort.findByIdAndEntityId("orden-mongo-001", "ent-policia"))
                                 .thenReturn(Mono.just(existingOrder));
 
                 when(resourceClientPort.enableResourceToAvailable(eq("rec-001"), anyString()))
@@ -135,10 +147,19 @@ class MaintenanceOrderServiceTest {
                                 .verifyComplete();
 
                 verify(resourceClientPort, times(1)).enableResourceToAvailable(eq("rec-001"), eq("mock-token"));
+                verify(auditLogRepositoryPort, times(1)).recordAudit(
+                                eq("TECHNICAL_DISCHARGE"),
+                                eq("ORD-2026-TEST"),
+                                eq("rec-001"),
+                                eq("test-user"),
+                                eq("ent-policia"),
+                                eq("SUCCESS"),
+                                argThat(id -> id != null && !id.isBlank()),
+                                eq("NONE"));
         }
 
         @Test
-        @DisplayName("Should reject order creation when non-global operator targets another entity")
+        @DisplayName("Should reject order creation and persist failure audit when non-global operator targets another entity")
         void shouldRejectCreationForForeignEntity() {
                 newOrder.setEntityId("ent-bomberos");
 
@@ -147,6 +168,15 @@ class MaintenanceOrderServiceTest {
                                 .verify();
 
                 verify(repositoryPort, never()).save(any());
+                verify(auditLogRepositoryPort, times(1)).recordAudit(
+                                eq("CREATE"),
+                                anyString(),
+                                eq("rec-001"),
+                                eq("test-user"),
+                                eq("ent-policia"),
+                                eq("FAILED"),
+                                argThat(id -> id != null && !id.isBlank()),
+                                eq("AccessDeniedException"));
         }
 
         @Test
@@ -159,6 +189,15 @@ class MaintenanceOrderServiceTest {
                                 .verify();
 
                 verify(repositoryPort, never()).save(any());
+                verify(auditLogRepositoryPort, times(1)).recordAudit(
+                                eq("CREATE"),
+                                anyString(),
+                                eq("rec-001"),
+                                eq("test-user"),
+                                eq("GLOBAL"),
+                                eq("FAILED"),
+                                argThat(id -> id != null && !id.isBlank()),
+                                eq("AccessDeniedException"));
         }
 
         @Test
@@ -166,7 +205,8 @@ class MaintenanceOrderServiceTest {
         void shouldAllowGlobalAdminWithExplicitEntityId() {
                 when(authClientPort.hasGlobalAccess()).thenReturn(Mono.just(true));
                 when(authClientPort.getCurrentEntityId()).thenReturn(Mono.empty());
-                when(repositoryPort.existsByResourceIdAndOrderStatusNotIn(eq("rec-001"), anyCollection()))
+                when(repositoryPort.existsByResourceIdAndEntityIdAndOrderStatusNotIn(
+                                eq("rec-001"), eq("ent-policia"), anyCollection()))
                                 .thenReturn(Mono.just(false));
                 when(resourceClientPort.disableResourceForMaintenance(eq("rec-001"), anyString()))
                                 .thenReturn(Mono.empty());
@@ -210,7 +250,8 @@ class MaintenanceOrderServiceTest {
                 completedOrder.setId("order-done-1");
                 completedOrder.setOrderStatus(OrderStatus.COMPLETED);
 
-                when(repositoryPort.findById("order-done-1")).thenReturn(Mono.just(completedOrder));
+                when(repositoryPort.findByIdAndEntityId("order-done-1", "ent-policia"))
+                                .thenReturn(Mono.just(completedOrder));
 
                 StepVerifier.create(useCase.cancel("order-done-1", "Duplicate", ""))
                                 .expectError(DomainException.class)
@@ -230,7 +271,8 @@ class MaintenanceOrderServiceTest {
         @Test
         @DisplayName("Should preserve caller tenant and order reference when target order is not found")
         void shouldPreserveCallerTenantWhenOrderNotFound() {
-                when(repositoryPort.findById("missing-id")).thenReturn(Mono.empty());
+                when(repositoryPort.findByIdAndEntityId("missing-id", "ent-policia"))
+                                .thenReturn(Mono.empty());
 
                 StepVerifier.create(useCase.startRepair("missing-id"))
                                 .expectError(DomainException.class)
@@ -250,7 +292,8 @@ class MaintenanceOrderServiceTest {
         @Test
         @DisplayName("Should fail operation instead of reporting success when durable audit persistence fails")
         void shouldFailOperationWhenMandatorySuccessAuditFails() {
-                when(repositoryPort.existsByResourceIdAndOrderStatusNotIn(eq("rec-001"), anyCollection()))
+                when(repositoryPort.existsByResourceIdAndEntityIdAndOrderStatusNotIn(
+                                eq("rec-001"), eq("ent-policia"), anyCollection()))
                                 .thenReturn(Mono.just(false));
                 when(resourceClientPort.disableResourceForMaintenance(eq("rec-001"), anyString()))
                                 .thenReturn(Mono.empty());
@@ -263,5 +306,123 @@ class MaintenanceOrderServiceTest {
                 StepVerifier.create(useCase.create(newOrder, "mock-token"))
                                 .expectError(DomainException.class)
                                 .verify();
+        }
+
+        @Test
+        @DisplayName("Should scope all read operations to the authenticated tenant")
+        void shouldScopeAllReadsToAuthenticatedTenant() {
+                newOrder.setId("order-own-1");
+                newOrder.setOrderCode("ORD-2026-OWN001");
+
+                when(repositoryPort.findByEntityId("ent-policia")).thenReturn(Flux.just(newOrder));
+                when(repositoryPort.findByIdAndEntityId("order-own-1", "ent-policia")).thenReturn(Mono.just(newOrder));
+                when(repositoryPort.findByIdAndEntityId("order-foreign-2", "ent-policia")).thenReturn(Mono.empty());
+                when(repositoryPort.findByOrderCodeAndEntityId("ORD-2026-OWN001", "ent-policia"))
+                                .thenReturn(Mono.just(newOrder));
+                when(repositoryPort.findByResourceIdAndEntityId("rec-001", "ent-policia"))
+                                .thenReturn(Flux.just(newOrder));
+                when(repositoryPort.findByEntityIdAndOrderStatus("ent-policia", "REGISTERED"))
+                                .thenReturn(Flux.just(newOrder));
+
+                StepVerifier.create(useCase.findAll())
+                                .expectNextMatches(order -> "order-own-1".equals(order.getId()))
+                                .verifyComplete();
+
+                StepVerifier.create(useCase.findById("order-own-1"))
+                                .expectNextMatches(order -> "ent-policia".equals(order.getEntityId()))
+                                .verifyComplete();
+
+                StepVerifier.create(useCase.findById("order-foreign-2"))
+                                .expectErrorMatches(err -> err instanceof DomainException de && de.isNotFound())
+                                .verify();
+
+                StepVerifier.create(useCase.findByCode("ORD-2026-OWN001"))
+                                .expectNextMatches(order -> "ORD-2026-OWN001".equals(order.getOrderCode()))
+                                .verifyComplete();
+
+                StepVerifier.create(useCase.findByResource("rec-001"))
+                                .expectNextCount(1)
+                                .verifyComplete();
+
+                StepVerifier.create(useCase.findByEntity("ent-bomberos"))
+                                .verifyComplete();
+
+                StepVerifier.create(useCase.findByStatus(OrderStatus.REGISTERED))
+                                .expectNextCount(1)
+                                .verifyComplete();
+
+                verify(repositoryPort, never()).findAll();
+                verify(repositoryPort, never()).findById(anyString());
+                verify(repositoryPort, never()).findByOrderCode(anyString());
+                verify(repositoryPort, never()).findByResourceId(anyString());
+                verify(repositoryPort, never()).findByOrderStatus(anyString());
+                verify(repositoryPort, never()).findByEntityId("ent-bomberos");
+        }
+
+        @Test
+        @DisplayName("Should persist durable audit logs with correlationId across all lifecycle mutations")
+        void shouldPersistDurableAuditAcrossAllLifecycleMutations() {
+                MaintenanceOrder order = MaintenanceOrder.create(
+                                "ORD-2026-LIFE",
+                                "rec-055",
+                                "POL-550",
+                                "ent-policia",
+                                "12345678",
+                                null,
+                                MaintenanceType.CORRECTIVE,
+                                OrderPriority.HIGH,
+                                "Initial brake defect",
+                                41000,
+                                null);
+                order.setId("order-life-1");
+
+                when(repositoryPort.findByIdAndEntityId("order-life-1", "ent-policia"))
+                                .thenReturn(Mono.just(order));
+                when(repositoryPort.save(any(MaintenanceOrder.class)))
+                                .thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+                when(resourceClientPort.enableResourceToAvailable(eq("rec-055")))
+                                .thenReturn(Mono.empty());
+
+                MaintenanceOrder updateDetails = MaintenanceOrder.builder()
+                                .failureReason("Updated brake defect details")
+                                .reportedMileage(41050)
+                                .priority(OrderPriority.CRITICAL)
+                                .build();
+                StepVerifier.create(useCase.update("order-life-1", updateDetails))
+                                .expectNextCount(1)
+                                .verifyComplete();
+
+                WorkshopDetail workshop = WorkshopDetail.builder()
+                                .workshopName("Central Workshop")
+                                .workshopRuc("20123456789")
+                                .estimatedCost(new BigDecimal("450.00"))
+                                .build();
+                StepVerifier.create(useCase.assignWorkshop("order-life-1", workshop))
+                                .expectNextMatches(o -> o.getOrderStatus() == OrderStatus.IN_DIAGNOSIS)
+                                .verifyComplete();
+
+                StepVerifier.create(useCase.startRepair("order-life-1"))
+                                .expectNextMatches(o -> o.getOrderStatus() == OrderStatus.IN_WORKSHOP)
+                                .verifyComplete();
+
+                StepVerifier.create(useCase.passToQualityControl("order-life-1"))
+                                .expectNextMatches(o -> o.getOrderStatus() == OrderStatus.IN_QUALITY_CONTROL)
+                                .verifyComplete();
+
+                StepVerifier.create(useCase.cancel("order-life-1", "Unit decommissioned", "Audit test"))
+                                .expectNextMatches(o -> o.getOrderStatus() == OrderStatus.CANCELLED)
+                                .verifyComplete();
+
+                for (String action : new String[] { "UPDATE", "ASSIGN_WORKSHOP", "START_REPAIR", "QUALITY_CONTROL", "CANCEL" }) {
+                        verify(auditLogRepositoryPort, times(1)).recordAudit(
+                                        eq(action),
+                                        eq("ORD-2026-LIFE"),
+                                        eq("rec-055"),
+                                        eq("test-user"),
+                                        eq("ent-policia"),
+                                        eq("SUCCESS"),
+                                        argThat(id -> id != null && !id.isBlank()),
+                                        eq("NONE"));
+                }
         }
 }

@@ -19,7 +19,7 @@ public class JwtDecoderConfig {
     @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
     private String issuerUri;
 
-    @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:${KEYCLOAK_JWK_SET_URI:http://localhost:8090/realms/PRS/protocol/openid-connect/certs}}")
+    @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
     private String jwkSetUri;
 
     @Bean
@@ -52,10 +52,22 @@ public class JwtDecoderConfig {
                             "Development tokens, legacy HMAC, or foreign providers are rejected.");
         }
 
-        if (issuerUri.contains("localhost") || issuerUri.contains("127.0.0.1")) {
+        if (jwkSetUri == null || jwkSetUri.isBlank()) {
             throw new IllegalStateException(
-                    "Production profile does not allow local issuer (localhost/127.0.0.1). " +
+                    "In production KEYCLOAK_JWK_SET_URI is mandatory. " +
+                            "Cryptographic signature verification requires a valid production JWKS endpoint.");
+        }
+
+        if (issuerUri.contains("localhost") || issuerUri.contains("127.0.0.1") || !issuerUri.startsWith("https://")) {
+            throw new IllegalStateException(
+                    "Production profile does not allow local or non-HTTPS issuer. " +
                             "KEYCLOAK_ISSUER_URI must target production Keycloak instance with HTTPS.");
+        }
+
+        if (jwkSetUri.contains("localhost") || jwkSetUri.contains("127.0.0.1") || !jwkSetUri.startsWith("https://")) {
+            throw new IllegalStateException(
+                    "Production profile does not allow local or non-HTTPS JWKS URI. " +
+                            "KEYCLOAK_JWK_SET_URI must target production Keycloak instance with HTTPS.");
         }
     }
 }

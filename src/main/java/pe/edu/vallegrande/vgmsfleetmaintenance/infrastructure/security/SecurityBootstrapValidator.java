@@ -17,7 +17,7 @@ import java.util.Arrays;
 @Configuration
 public class SecurityBootstrapValidator {
 
-    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/PRS}}")
+    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}")
     private String issuerUri;
 
     private final Environment environment;
@@ -58,9 +58,9 @@ public class SecurityBootstrapValidator {
             throw new IllegalStateException(msg);
         }
 
-        if (issuerUri.contains(".local") || issuerUri.contains(":8090") || issuerUri.contains(":8080")) {
-            String msg = "FATAL in PRODUCTION: issuer-uri targets development port. " +
-                    "Must target HTTPS production Keycloak.";
+        if (issuerUri.contains(".local") || issuerUri.contains(":8090") || issuerUri.contains(":8080")
+                || !issuerUri.startsWith("https://")) {
+            String msg = "FATAL in PRODUCTION: issuer-uri must target HTTPS production Keycloak without local ports.";
             log.error(msg);
             throw new IllegalStateException(msg);
         }

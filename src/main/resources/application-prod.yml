@@ -4,8 +4,14 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:https://iam.vallegrande.edu.pe/realms/PRS}
-          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:https://iam.vallegrande.edu.pe/realms/PRS/protocol/openid-connect/certs}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
 
 logging:
   level:

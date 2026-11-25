@@ -83,15 +83,26 @@ pe.edu.vallegrande.caneteseguro.fleet
 
 ---
 
-## 5. Ejecución Local
+## 5. Exposición de Red y Ruteo vía API Gateway
+
+Este microservicio opera estrictamente como un servicio interno dentro de la red privada `vg-network`:
+
+* **Sin exposición directa al exterior:** En `compose.yaml`, el servicio declara exclusivamente `expose: ["9012"]` (sin mapeo de `ports:` al host). Ningún cliente externo se conecta directamente al puerto `9012`.
+* **Punto único de entrada (`vg-ms-api-gateway`):** Todo el tráfico externo ingresa a través de `vg-ms-api-gateway` (puerto `9000`), que aplica validación de JWT, CORS centralizado y enruta únicamente el prefijo de negocio `/api/v1/maintenance-orders/**` hacia `http://vg-ms-fleetmaintenance:9012`.
+* **Endurecimiento en producción (`prod`):** En el perfil `prod`, Swagger/OpenAPI (`/v3/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html`) y `/actuator/info` quedan deshabilitados y bloqueados por `SecurityConfig` (`anyExchange().denyAll()`). Únicamente `/actuator/health` permanece accesible internamente para healthchecks de infraestructura con `show-details: when-authorized`.
+* **OIDC obligatorio en producción:** `KEYCLOAK_ISSUER_URI` y `KEYCLOAK_JWK_SET_URI` son variables de entorno obligatorias en `prod` (sin valores por defecto locales ni endpoints embebidos).
+
+---
+
+## 6. Ejecución Local (perfil `dev`)
 
 ```bash
 # Compilar y ejecutar pruebas
-mvn clean test
+./mvnw clean test
 
-# Iniciar el servicio en el puerto 9012
-mvn spring-boot:run
+# Iniciar el servicio en modo desarrollo (puerto 9012)
+SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 ```
 
-* **Swagger UI:** `http://localhost:9012/swagger-ui.html`
-* **OpenAPI Docs:** `http://localhost:9012/v3/api-docs`
+* **Swagger UI (solo `dev`):** `http://localhost:9012/swagger-ui.html`
+* **OpenAPI Docs (solo `dev`):** `http://localhost:9012/v3/api-docs`

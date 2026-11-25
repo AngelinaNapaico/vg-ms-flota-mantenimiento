@@ -13,17 +13,28 @@ public interface MaintenanceOrderRepositoryPort {
 
     Mono<MaintenanceOrder> findById(String id);
 
+    Mono<MaintenanceOrder> findByIdAndEntityId(String id, String entityId);
+
     Mono<MaintenanceOrder> findByOrderCode(String orderCode);
 
+    Mono<MaintenanceOrder> findByOrderCodeAndEntityId(String orderCode, String entityId);
+
     Flux<MaintenanceOrder> findByResourceId(String resourceId);
+
+    Flux<MaintenanceOrder> findByResourceIdAndEntityId(String resourceId, String entityId);
 
     Flux<MaintenanceOrder> findByEntityId(String entityId);
 
     Flux<MaintenanceOrder> findByOrderStatus(String orderStatus);
+
+    Flux<MaintenanceOrder> findByEntityIdAndOrderStatus(String entityId, String orderStatus);
 
     Flux<MaintenanceOrder> findAll();
 
     Mono<MaintenanceOrder> save(MaintenanceOrder order);
 
     Mono<Boolean> existsByResourceIdAndOrderStatusNotIn(String resourceId, Collection<String> statuses);
+
+    Mono<Boolean> existsByResourceIdAndEntityIdAndOrderStatusNotIn(
+            String resourceId, String entityId, Collection<String> statuses);
 }

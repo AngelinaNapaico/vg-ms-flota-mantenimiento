@@ -15,14 +15,12 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/PRS}
-          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8090/realms/PRS/protocol/openid-connect/certs}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
 
 keycloak:
   enabled: ${KEYCLOAK_ENABLED:true}
   token-mode: ${KEYCLOAK_TOKEN_MODE:KEYCLOAK}
-  issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/PRS}
-  jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8090/realms/PRS/protocol/openid-connect/certs}
 
 services:
   recursos:
@@ -31,9 +29,6 @@ services:
     url: ${SERVICES_CATALOGO_URL:http://localhost:9005}
   incidentes:
     url: ${SERVICES_INCIDENTES_URL:http://localhost:9003}
-
-jwt:
-  secret: ${JWT_SECRET}
 
 springdoc:
   api-docs:
@@ -44,5 +39,5 @@ springdoc:
 
 logging:
   level:
-    pe.edu.vallegrande.vgmsfleetmaintenance: DEBUG
+    pe.edu.vallegrande.vgmsfleetmaintenance: INFO
     org.springframework.data.mongodb: INFO

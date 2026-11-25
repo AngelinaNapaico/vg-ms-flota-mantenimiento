@@ -15,6 +15,8 @@ import java.util.Collection;
 @Repository
 public interface MaintenanceOrderRepository extends ReactiveMongoRepository<MaintenanceOrderDocument, String> {
 
+    Mono<MaintenanceOrderDocument> findByIdAndEntityId(String id, String entityId);
+
     Mono<MaintenanceOrderDocument> findByOrderCode(String orderCode);
 
     Mono<MaintenanceOrderDocument> findByEntityIdAndOrderCode(String entityId, String orderCode);

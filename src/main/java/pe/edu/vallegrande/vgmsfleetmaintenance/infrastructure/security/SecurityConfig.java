@@ -3,6 +3,7 @@ package pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,7 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -30,19 +32,23 @@ import java.util.stream.Collectors;
 /**
  * Reactive security configuration and Keycloak JWT role mapping.
  * Enforces normalized JSON error responses for 401 Unauthorized and 403 Forbidden
- * without exposing internal security details.
+ * without exposing internal security details, and restricts API documentation
+ * and non-essential actuator endpoints outside production.
  */
 @Configuration
 @EnableWebFluxSecurity
 @EnableReactiveMethodSecurity
 public class SecurityConfig {
 
-    private static final String[] PUBLIC_PATHS = {
+    private static final String[] HEALTH_PATHS = {
+            "/actuator/health"
+    };
+
+    private static final String[] NON_PROD_PUBLIC_PATHS = {
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/webjars/**",
-            "/actuator/health",
             "/actuator/info"
     };
 
@@ -58,17 +64,25 @@ public class SecurityConfig {
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(
             ServerHttpSecurity http,
-            ReactiveJwtDecoder jwtDecoder) {
+            ReactiveJwtDecoder jwtDecoder,
+            Environment environment) {
+        boolean isProd = Arrays.asList(environment.getActiveProfiles()).contains("prod");
+
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
-                .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers(PUBLIC_PATHS).permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/v1/maintenance-orders/**").hasAnyRole(READ_ROLES)
-                        .pathMatchers(HttpMethod.POST, "/api/v1/maintenance-orders/**").hasAnyRole(WRITE_ROLES)
-                        .pathMatchers(HttpMethod.PUT, "/api/v1/maintenance-orders/**").hasAnyRole(WRITE_ROLES)
-                        .pathMatchers(HttpMethod.PATCH, "/api/v1/maintenance-orders/**").hasAnyRole(WRITE_ROLES)
-                        .pathMatchers(HttpMethod.DELETE, "/api/v1/maintenance-orders/**").hasAnyRole(WRITE_ROLES)
-                        .anyExchange().denyAll())
+                .authorizeExchange(exchanges -> {
+                    exchanges.pathMatchers(HEALTH_PATHS).permitAll();
+                    if (!isProd) {
+                        exchanges.pathMatchers(NON_PROD_PUBLIC_PATHS).permitAll();
+                    }
+                    exchanges
+                            .pathMatchers(HttpMethod.GET, "/api/v1/maintenance-orders/**").hasAnyRole(READ_ROLES)
+                            .pathMatchers(HttpMethod.POST, "/api/v1/maintenance-orders/**").hasAnyRole(WRITE_ROLES)
+                            .pathMatchers(HttpMethod.PUT, "/api/v1/maintenance-orders/**").hasAnyRole(WRITE_ROLES)
+                            .pathMatchers(HttpMethod.PATCH, "/api/v1/maintenance-orders/**").hasAnyRole(WRITE_ROLES)
+                            .pathMatchers(HttpMethod.DELETE, "/api/v1/maintenance-orders/**").hasAnyRole(WRITE_ROLES)
+                            .anyExchange().denyAll();
+                })
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((exchange, ex) -> writeErrorResponse(
                                 exchange,
