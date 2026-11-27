@@ -485,7 +485,7 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                                 : orderId;
                 String resourceRef = (loadedOrder != null && loadedOrder.getResourceId() != null)
                                 ? loadedOrder.getResourceId()
-                                : orderId;
+                                : "RESOURCE_UNAVAILABLE";
                 String tenantRef = (loadedOrder != null && loadedOrder.getEntityId() != null)
                                 ? loadedOrder.getEntityId()
                                 : callerTenant;
@@ -493,15 +493,6 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                 return audit(action, orderRef, resourceRef, actor, tenantRef, "FAILED", correlationId, error)
                                 .then(Mono.error(error));
         }
-        String orderRef = (loadedOrder != null && loadedOrder.getOrderCode() != null)
-                ? loadedOrder.getOrderCode()
-                : orderId;
-        String resourceRef = (loadedOrder != null && loadedOrder.getResourceId() != null)
-                ? loadedOrder.getResourceId()
-                : "RESOURCE_UNAVAILABLE";
-        String tenantRef = (loadedOrder != null && loadedOrder.getEntityId() != null)
-                ? loadedOrder.getEntityId()
-                : callerTenant;
 
         private boolean isAuditPersistenceError(Throwable error) {
                 return error instanceof DomainException
