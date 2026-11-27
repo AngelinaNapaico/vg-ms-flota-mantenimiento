@@ -90,6 +90,7 @@ public final class MaintenanceOrderDocumentMapper {
                 .technicalDischargeReport(toDomain(document.getTechnicalDischargeReport()))
                 .remarks(document.getRemarks())
                 .status(document.getStatus())
+                .active(document.getActive())
                 .version(document.getVersion())
                 .createdAt(document.getCreatedAt())
                 .updatedAt(document.getUpdatedAt())
@@ -118,10 +119,20 @@ public final class MaintenanceOrderDocumentMapper {
                 .technicalDischargeReport(toDocument(order.getTechnicalDischargeReport()))
                 .remarks(order.getRemarks())
                 .status(order.getStatus())
+                .active(resolveActiveFlag(order))
                 .version(order.getVersion())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();
+    }
+
+    private static Boolean resolveActiveFlag(MaintenanceOrder order) {
+        if (order.getOrderStatus() == OrderStatus.COMPLETED
+                || order.getOrderStatus() == OrderStatus.CANCELLED
+                || "I".equalsIgnoreCase(order.getStatus())) {
+            return Boolean.FALSE;
+        }
+        return order.getActive() != null ? order.getActive() : Boolean.TRUE;
     }
 
     public static WorkshopDetail toDomain(WorkshopDetailDocument document) {

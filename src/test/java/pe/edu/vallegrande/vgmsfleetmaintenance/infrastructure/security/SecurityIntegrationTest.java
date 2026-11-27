@@ -172,4 +172,20 @@ class SecurityIntegrationTest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+
+    @Test
+    @DisplayName("Should return 403 for authenticated request targeting undeclared route or HTTP method")
+    void shouldDenyUndeclaredRouteAndMethodWithValidToken() {
+        webTestClient.get()
+                .uri("/api/v1/internal/undocumented")
+                .header("Authorization", "Bearer " + TestJwtTokens.VALID_TOKEN)
+                .exchange()
+                .expectStatus().isForbidden();
+
+        webTestClient.head()
+                .uri("/api/v1/maintenance-orders")
+                .header("Authorization", "Bearer " + TestJwtTokens.VALID_TOKEN)
+                .exchange()
+                .expectStatus().isForbidden();
+    }
 }

@@ -1,4 +1,4 @@
-# Configuración para entorno de Producción (prod)
+# Production profile configuration (prod)
 spring:
   security:
     oauth2:
@@ -19,6 +19,11 @@ logging:
     pe.edu.vallegrande.vgmsfleetmaintenance: INFO
 
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+        exclude: info,env,beans,configprops,mappings,threaddump,heapdump
   endpoint:
     health:
       show-details: when-authorized

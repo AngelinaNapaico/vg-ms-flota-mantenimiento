@@ -60,6 +60,7 @@ public class FieldNameMapper {
         FIELD_NAME_MAP.put("maintenanceCost", "Costo de Mantenimiento");
         FIELD_NAME_MAP.put("guaranteeMonths", "Meses de Garantía");
         FIELD_NAME_MAP.put("dischargeNotes", "Notas de Alta");
+        FIELD_NAME_MAP.put("atLeastOneFieldPresent", "Datos de Actualización");
     }
 
     public static String getPublicFieldName(String fieldName) {

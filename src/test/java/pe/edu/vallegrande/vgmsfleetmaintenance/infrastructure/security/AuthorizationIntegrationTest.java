@@ -102,4 +102,32 @@ class AuthorizationIntegrationTest {
                 .exchange()
                 .expectStatus().value(status -> assertNotEquals(HttpStatus.FORBIDDEN.value(), status));
     }
+
+    @Test
+    @WithMockUser(roles = "SUPER_ADMIN")
+    @DisplayName("Should deny undeclared route by default even for authenticated super admin")
+    void shouldDenyUndeclaredRouteByDefault() {
+        webTestClient.get()
+                .uri("/api/v1/internal/undeclared-endpoint")
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(403)
+                .jsonPath("$.error").isEqualTo("Forbidden");
+    }
+
+    @Test
+    @WithMockUser(roles = "SUPER_ADMIN")
+    @DisplayName("Should deny undeclared HTTP method by default even for authenticated super admin")
+    void shouldDenyUndeclaredHttpMethodByDefault() {
+        webTestClient.head()
+                .uri("/api/v1/maintenance-orders")
+                .exchange()
+                .expectStatus().isForbidden();
+
+        webTestClient.post()
+                .uri("/actuator/health")
+                .exchange()
+                .expectStatus().isForbidden();
+    }
 }

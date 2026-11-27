@@ -1,9 +1,11 @@
 package pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -60,4 +62,15 @@ public class UpdateMaintenanceOrderRequest {
     @JsonAlias({"detalleTaller", "workshopDetail"})
     @Schema(description = "Datos opcionales del taller mecánico si ya fue asignado")
     private AssignWorkshopRequest workshopDetail;
+
+    @JsonIgnore
+    @AssertTrue(message = "Debe proporcionar al menos un campo válido para actualizar")
+    public boolean isAtLeastOneFieldPresent() {
+        return (failureReason != null && !failureReason.isBlank())
+                || reportedMileage != null
+                || priority != null
+                || (remarks != null && !remarks.isBlank())
+                || (incidentId != null && !incidentId.isBlank())
+                || workshopDetail != null;
+    }
 }

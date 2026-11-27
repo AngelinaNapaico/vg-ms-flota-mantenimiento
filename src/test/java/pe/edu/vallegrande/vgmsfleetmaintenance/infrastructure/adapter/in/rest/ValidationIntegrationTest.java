@@ -71,6 +71,9 @@ class ValidationIntegrationTest {
             {
                 "resourceId": "65f1a2b3c4d5e6f7a8b9c0d1",
                 "resourcePlate": "EGA-123",
+                "entityId": "65f1a2b3c4d5e6f7a8b9c0e2",
+                "maintenanceType": "PREVENTIVE",
+                "priority": "HIGH",
                 "failureReason": "Valid reason",
                 "reportedMileage": -50
             }
@@ -100,6 +103,42 @@ class ValidationIntegrationTest {
                 .uri("/api/v1/maintenance-orders/order-001")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(invalidUpdatePayload)
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY)
+                .expectBody()
+                .jsonPath("$.errors").exists();
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR_ENTIDAD")
+    @DisplayName("Should return 422 when PUT update payload has all fields null or empty")
+    void shouldReturn422WhenUpdatePayloadIsEmpty() {
+        webTestClient.put()
+                .uri("/api/v1/maintenance-orders/order-001")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{}")
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY)
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("Unprocessable Entity")
+                .jsonPath("$.errors").exists();
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR_ENTIDAD")
+    @DisplayName("Should return 422 when estimatedDeliveryDate is in the past")
+    void shouldReturn422WhenEstimatedDeliveryDateIsInThePast() {
+        String pastWorkshopPayload = """
+            {
+                "workshopName": "Central Workshop",
+                "estimatedDeliveryDate": "2020-01-01T10:00:00"
+            }
+        """;
+
+        webTestClient.patch()
+                .uri("/api/v1/maintenance-orders/order-001/assign-workshop")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(pastWorkshopPayload)
                 .exchange()
                 .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY)
                 .expectBody()

@@ -71,7 +71,7 @@ public class SecurityConfig {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> {
-                    exchanges.pathMatchers(HEALTH_PATHS).permitAll();
+                    exchanges.pathMatchers(HttpMethod.GET, HEALTH_PATHS).permitAll();
                     if (!isProd) {
                         exchanges.pathMatchers(NON_PROD_PUBLIC_PATHS).permitAll();
                     }

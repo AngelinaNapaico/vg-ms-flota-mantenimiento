@@ -40,6 +40,7 @@ public class MaintenanceOrder {
 
     private String remarks;
     private String status;
+    private Boolean active;
     private Long version;
 
     private LocalDateTime createdAt;
@@ -77,6 +78,7 @@ public class MaintenanceOrder {
                 .reportedMileage(reportedMileage)
                 .remarks(remarks)
                 .status("A")
+                .active(true)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -118,6 +120,7 @@ public class MaintenanceOrder {
         }
         this.technicalDischargeReport = report;
         this.orderStatus = OrderStatus.COMPLETED;
+        this.active = false;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -127,6 +130,7 @@ public class MaintenanceOrder {
         }
         this.orderStatus = OrderStatus.CANCELLED;
         this.status = "I";
+        this.active = false;
         this.remarks = (this.remarks != null ? this.remarks + " | " : "") + "Cancelada: " + reason;
         this.updatedAt = LocalDateTime.now();
     }

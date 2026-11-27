@@ -90,6 +90,7 @@ class MaintenanceOrderServiceTest {
 
                 StepVerifier.create(useCase.create(newOrder, "mock-token"))
                                 .expectNextMatches(resp -> resp.getResourceId().equals("rec-001")
+                                                && Boolean.TRUE.equals(resp.getActive())
                                                 && resp.getOrderStatus() == OrderStatus.REGISTERED
                                                 && resp.getOrderCode().startsWith("ORD-"))
                                 .verifyComplete();
@@ -221,7 +222,7 @@ class MaintenanceOrderServiceTest {
                 verify(auditLogRepositoryPort, times(1)).recordAudit(
                                 eq("UPDATE"),
                                 eq("order-001"),
-                                eq("order-001"),
+                                eq("RESOURCE_UNAVAILABLE"),
                                 eq("test-user"),
                                 eq("N/A"),
                                 eq("FAILED"),
@@ -236,11 +237,13 @@ class MaintenanceOrderServiceTest {
                                 .thenReturn(Mono.empty());
                 when(auditLogRepositoryPort.recordAudit(
                                 eq("START_REPAIR"), any(), any(), any(), any(), eq("FAILED"), any(), any()))
-                                .thenReturn(Mono.error(new RuntimeException("Audit store down during failure logging")));
+                                .thenReturn(Mono.error(
+                                                new RuntimeException("Audit store down during failure logging")));
 
                 StepVerifier.create(useCase.startRepair("missing-id"))
                                 .expectErrorMatches(err -> err instanceof DomainException
-                                                && "Failed to persist durable audit log for operation".equals(err.getMessage()))
+                                                && "Failed to persist durable audit log for operation"
+                                                                .equals(err.getMessage()))
                                 .verify();
         }
 
@@ -325,7 +328,7 @@ class MaintenanceOrderServiceTest {
                 verify(auditLogRepositoryPort, times(1)).recordAudit(
                                 eq("START_REPAIR"),
                                 eq("missing-id"),
-                                eq("missing-id"),
+                                eq("RESOURCE_UNAVAILABLE"),
                                 eq("test-user"),
                                 eq("ent-policia"),
                                 eq("FAILED"),

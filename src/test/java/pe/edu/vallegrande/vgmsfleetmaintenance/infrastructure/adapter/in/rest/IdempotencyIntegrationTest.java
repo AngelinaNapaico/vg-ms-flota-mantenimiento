@@ -123,6 +123,7 @@ class IdempotencyIntegrationTest {
 
         assertEquals(1, persistedOrders.size());
         assertEquals("REGISTERED", persistedOrders.get(0).getOrderStatus());
+        assertEquals(Boolean.TRUE, persistedOrders.get(0).getActive());
         assertEquals("Initial order attempt", persistedOrders.get(0).getFailureReason());
 
         authenticatedClient.post()
@@ -134,6 +135,7 @@ class IdempotencyIntegrationTest {
 
         assertEquals(1, persistedOrders.size());
         assertEquals("REGISTERED", persistedOrders.get(0).getOrderStatus());
+        assertEquals(Boolean.TRUE, persistedOrders.get(0).getActive());
         assertEquals("Initial order attempt", persistedOrders.get(0).getFailureReason());
         verify(repository, times(1)).save(any(MaintenanceOrderDocument.class));
     }

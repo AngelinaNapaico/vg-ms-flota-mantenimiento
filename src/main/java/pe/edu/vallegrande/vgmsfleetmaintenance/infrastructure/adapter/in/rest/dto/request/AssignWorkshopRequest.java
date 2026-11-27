@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -62,9 +63,10 @@ public class AssignWorkshopRequest {
     @Schema(description = "Presupuesto cotizado inicial (S/.)", example = "1500.00")
     private BigDecimal estimatedCost;
 
+    @FutureOrPresent(message = "La fecha estimada de entrega debe ser presente o futura")
     @JsonProperty("estimatedDeliveryDate")
     @JsonAlias({"fechaEstimadaEntrega", "estimatedDeliveryDate"})
-    @Schema(description = "Fecha estimada de fin de trabajos (ISO-8601)", example = "2026-10-28T18:00:00")
+    @Schema(description = "Fecha estimada de fin de trabajos (ISO-8601)", example = "2027-10-28T18:00:00")
     private LocalDateTime estimatedDeliveryDate;
 
     @Size(max = 1000, message = "El diagnóstico inicial no puede exceder 1000 caracteres")

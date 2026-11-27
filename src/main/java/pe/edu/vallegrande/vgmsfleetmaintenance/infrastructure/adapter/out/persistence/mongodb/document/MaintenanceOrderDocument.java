@@ -28,6 +28,7 @@ import java.time.LocalDateTime;
 @Document(collection = "maintenance_orders")
 @CompoundIndexes({
         @CompoundIndex(name = "idx_entity_order_code", def = "{'entityId': 1, 'orderCode': 1}", unique = true),
+        @CompoundIndex(name = "idx_entity_resource", def = "{'entityId': 1, 'resourceId': 1}"),
         @CompoundIndex(name = "idx_entity_status", def = "{'entityId': 1, 'orderStatus': 1}"),
         @CompoundIndex(name = "idx_entity_resource_status", def = "{'entityId': 1, 'resourceId': 1, 'orderStatus': 1}"),
         @CompoundIndex(name = "idx_unique_active_resource_order", def = "{'entityId': 1, 'resourceId': 1, 'active': 1}", partialFilter = "{'active': true}", unique = true)
@@ -40,7 +41,6 @@ public class MaintenanceOrderDocument {
     @Field("orderCode")
     private String orderCode;
 
-    @Indexed
     @Field("resourceId")
     private String resourceId;
 
@@ -60,7 +60,6 @@ public class MaintenanceOrderDocument {
     @Field("maintenanceType")
     private String maintenanceType;
 
-    @Indexed
     @Field("orderStatus")
     private String orderStatus;
 
@@ -82,7 +81,6 @@ public class MaintenanceOrderDocument {
     @Field("remarks")
     private String remarks;
 
-    @Indexed
     @Field("status")
     private String status;
 

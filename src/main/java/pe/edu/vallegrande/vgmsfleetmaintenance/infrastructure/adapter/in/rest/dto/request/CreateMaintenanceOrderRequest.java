@@ -34,6 +34,7 @@ public class CreateMaintenanceOrderRequest {
     @Schema(description = "Identificador del recurso en vg-ms-recursos", example = "68ef45d12a8934bc78901234")
     private String resourceId;
 
+    @NotBlank(message = "La placa del vehículo es obligatoria")
     @Size(max = 20, message = "La placa no puede exceder 20 caracteres")
     @Pattern(regexp = "^[a-zA-Z0-9-]+$", message = "La placa contiene caracteres no permitidos")
     @JsonProperty("resourcePlate")
@@ -41,6 +42,7 @@ public class CreateMaintenanceOrderRequest {
     @Schema(description = "Placa o identificador visible del vehículo", example = "POL-102")
     private String resourcePlate;
 
+    @NotBlank(message = "El ID de la entidad propietaria es obligatorio")
     @Size(max = 100, message = "El ID de entidad no puede exceder 100 caracteres")
     @Pattern(regexp = "^[a-fA-F0-9]{24}$|^[a-zA-Z0-9_-]+$", message = "El ID de la entidad contiene caracteres no permitidos")
     @JsonProperty("entityId")
