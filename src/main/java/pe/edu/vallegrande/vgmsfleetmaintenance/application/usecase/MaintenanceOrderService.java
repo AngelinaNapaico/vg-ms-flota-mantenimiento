@@ -160,6 +160,7 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                                 actor -> resolveEffectiveEntityId(order.getEntityId()).flatMap(effectiveTenant -> {
                                         effectiveTenantRef.set(effectiveTenant);
                                         order.setEntityId(effectiveTenant);
+                                        order.setReportedByDni(actor);
 
                                         Mono<Void> validateResource = (token != null && !token.isBlank())
                                                         ? resourceClientPort.validateResourceBelongsToEntity(
@@ -358,6 +359,9 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                                 .flatMap(order -> {
                                         loadedOrder.set(order);
                                         return Mono.fromCallable(() -> {
+                                                if (dischargeReport != null) {
+                                                        dischargeReport.setApprovedByDni(actor);
+                                                }
                                                 order.issueTechnicalDischarge(dischargeReport);
                                                 return order;
                                         }).flatMap(modifiedOrder -> {

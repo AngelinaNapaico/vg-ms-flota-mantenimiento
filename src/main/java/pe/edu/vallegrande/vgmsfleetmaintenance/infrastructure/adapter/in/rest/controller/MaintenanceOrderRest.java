@@ -24,7 +24,6 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.dt
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.dto.response.MaintenanceOrderResponse;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.mapper.MaintenanceOrderRestMapper;
 import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security.RoleConstants;
-import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.security.SecurityUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -108,12 +107,10 @@ public class MaintenanceOrderRest {
         @PostMapping
         @ResponseStatus(HttpStatus.CREATED)
         @PreAuthorize(RoleConstants.WRITE_ROLES)
-        @Operation(summary = "Create maintenance order and set vehicle to EN_MANTENIMIENTO")
+        @Operation(summary = "Create maintenance order and set vehicle to UNDER_MAINTENANCE")
         public Mono<MaintenanceOrderDetailResponse> create(
                         @Valid @RequestBody CreateMaintenanceOrderRequest request) {
-                return SecurityUtils.getCurrentUsername()
-                                .defaultIfEmpty("SYSTEM")
-                                .flatMap(dni -> useCase.create(MaintenanceOrderRestMapper.toDomain(request, dni)))
+                return useCase.create(MaintenanceOrderRestMapper.toDomain(request))
                                 .map(MaintenanceOrderRestMapper::toDetailResponse);
         }
 
@@ -157,14 +154,11 @@ public class MaintenanceOrderRest {
 
         @PostMapping("/{id}/technical-discharge")
         @PreAuthorize(RoleConstants.WRITE_ROLES)
-        @Operation(summary = "Issue technical discharge, complete order and restore resource to DISPONIBLE")
+        @Operation(summary = "Issue technical discharge, complete order and restore resource to AVAILABLE")
         public Mono<MaintenanceOrderDetailResponse> issueTechnicalDischarge(
                         @PathVariable @NotBlank @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Invalid ID format") String id,
                         @Valid @RequestBody TechnicalDischargeRequest request) {
-                return SecurityUtils.getCurrentUsername()
-                                .defaultIfEmpty("SYSTEM")
-                                .flatMap(dni -> useCase.issueTechnicalDischarge(id,
-                                                MaintenanceOrderRestMapper.toDomain(request, dni)))
+                return useCase.issueTechnicalDischarge(id, MaintenanceOrderRestMapper.toDomain(request))
                                 .map(MaintenanceOrderRestMapper::toDetailResponse);
         }
 

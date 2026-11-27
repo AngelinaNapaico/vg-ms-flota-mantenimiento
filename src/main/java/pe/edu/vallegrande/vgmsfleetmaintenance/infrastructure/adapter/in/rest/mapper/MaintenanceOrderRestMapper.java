@@ -103,11 +103,7 @@ public final class MaintenanceOrderRestMapper {
                 .build();
     }
 
-    public static MaintenanceOrder toDomain(CreateMaintenanceOrderRequest request, String reportedByDni) {
-        return toDomain(request, reportedByDni, request != null ? request.getEntityId() : null);
-    }
-
-    public static MaintenanceOrder toDomain(CreateMaintenanceOrderRequest request, String reportedByDni, String entityId) {
+    public static MaintenanceOrder toDomain(CreateMaintenanceOrderRequest request) {
         if (request == null) {
             return null;
         }
@@ -115,8 +111,8 @@ public final class MaintenanceOrderRestMapper {
                 null,
                 request.getResourceId(),
                 request.getResourcePlate(),
-                entityId != null ? entityId : request.getEntityId(),
-                reportedByDni,
+                request.getEntityId(),
+                null,
                 request.getIncidentId(),
                 request.getMaintenanceType(),
                 request.getPriority(),
@@ -157,7 +153,7 @@ public final class MaintenanceOrderRestMapper {
                 .build();
     }
 
-    public static TechnicalDischargeReport toDomain(TechnicalDischargeRequest request, String approvedByDni) {
+    public static TechnicalDischargeReport toDomain(TechnicalDischargeRequest request) {
         if (request == null) {
             return null;
         }
@@ -166,7 +162,6 @@ public final class MaintenanceOrderRestMapper {
                 .testsPerformed(request.getTestsPerformed())
                 .exitMileage(request.getExitMileage())
                 .dischargeDate(java.time.LocalDateTime.now())
-                .approvedByDni(approvedByDni)
                 .remarks(request.getRemarks())
                 .build();
     }

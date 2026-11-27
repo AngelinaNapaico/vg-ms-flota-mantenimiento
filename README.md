@@ -47,7 +47,7 @@ pe.edu.vallegrande.caneteseguro.fleet
     │       ├── persistence/mongodb/# Adaptador secundario MongoDB, MaintenanceOrderDocument, Mapper, Repo
     │       └── client/recursos/    # ResourceClientAdapter (WebClient reactivo hacia vg-ms-recursos)
     ├── exception/                  # GlobalExceptionHandler
-    ├── security/                   # SecurityConfig, RoleConstants, SecurityUtils, TenantScope
+    ├── security/                   # SecurityConfig, RoleConstants, TenantScope, JwtDecoderConfig
     └── config/                     # OpenApiConfig, WebClientConfig
 ```
 
