@@ -99,6 +99,7 @@ public class ResourceClientAdapter implements ResourceClientPort {
                                     technicalCause));
                         }))
                 .bodyToMono(OperationalResourceDTO.class)
+                .flatMap(raw -> Mono.justOrEmpty(ResourceClientMapper.unwrap(raw)))
                 .switchIfEmpty(Mono.error(new DomainException("Operational resource record not found")))
                 .flatMap(resource -> {
                     if (resource.getEntityId() == null || !resource.getEntityId().equals(entityId)) {
@@ -125,7 +126,7 @@ public class ResourceClientAdapter implements ResourceClientPort {
 
     @Override
     public Mono<Void> disableResourceForMaintenance(String resourceId, String bearerToken) {
-        OperationalResourceDTO payload = ResourceClientMapper.toDTO(resourceId, "EN_MANTENIMIENTO");
+        OperationalResourceDTO payload = ResourceClientMapper.toDTO(resourceId, "UNDER_MAINTENANCE");
         log.info("Requesting status change to {} for resource {}", payload.getAvailability(), resourceId);
 
         return requireBearerToken(bearerToken).flatMap(resolvedToken -> webClient.patch()
@@ -177,7 +178,7 @@ public class ResourceClientAdapter implements ResourceClientPort {
 
     @Override
     public Mono<Void> enableResourceToAvailable(String resourceId, String bearerToken) {
-        OperationalResourceDTO payload = ResourceClientMapper.toDTO(resourceId, "DISPONIBLE");
+        OperationalResourceDTO payload = ResourceClientMapper.toDTO(resourceId, "AVAILABLE");
         log.info("Requesting status change to {} for resource {}", payload.getAvailability(), resourceId);
 
         return requireBearerToken(bearerToken).flatMap(resolvedToken -> webClient.patch()

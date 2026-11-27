@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
@@ -26,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ResourceClientAdapterTest {
 
     @Test
-    @DisplayName("Should call PATCH /api/v1/resources/{id}/availability?availability=EN_MANTENIMIENTO with Bearer token")
+    @DisplayName("Should call PATCH /api/v1/resources/{id}/availability?availability=UNDER_MAINTENANCE with Bearer token")
     void shouldCallDisableResourceForMaintenanceWithEnglishPath() {
         AtomicReference<URI> capturedUri = new AtomicReference<>();
         AtomicReference<HttpMethod> capturedMethod = new AtomicReference<>();
@@ -47,11 +48,11 @@ class ResourceClientAdapterTest {
 
         assertEquals(HttpMethod.PATCH, capturedMethod.get());
         assertEquals("Bearer jwt-token-abc", capturedAuth.get());
-        assertEquals("http://localhost:9004/api/v1/resources/rec-123/availability?availability=EN_MANTENIMIENTO", capturedUri.get().toString());
+        assertEquals("http://localhost:9004/api/v1/resources/rec-123/availability?availability=UNDER_MAINTENANCE", capturedUri.get().toString());
     }
 
     @Test
-    @DisplayName("Should call PATCH /api/v1/resources/{id}/availability?availability=DISPONIBLE with Bearer token")
+    @DisplayName("Should call PATCH /api/v1/resources/{id}/availability?availability=AVAILABLE with Bearer token")
     void shouldCallEnableResourceToAvailableWithEnglishPath() {
         AtomicReference<URI> capturedUri = new AtomicReference<>();
         AtomicReference<HttpMethod> capturedMethod = new AtomicReference<>();
@@ -72,7 +73,38 @@ class ResourceClientAdapterTest {
 
         assertEquals(HttpMethod.PATCH, capturedMethod.get());
         assertEquals("Bearer jwt-token-xyz", capturedAuth.get());
-        assertEquals("http://localhost:9004/api/v1/resources/rec-123/availability?availability=DISPONIBLE", capturedUri.get().toString());
+        assertEquals("http://localhost:9004/api/v1/resources/rec-123/availability?availability=AVAILABLE", capturedUri.get().toString());
+    }
+
+    @Test
+    @DisplayName("Should unwrap ApiResponse data payload and validate resource entity ownership")
+    void shouldUnwrapApiResponseAndValidateOwnership() {
+        String wrappedJson = """
+                {
+                  "success": true,
+                  "data": {
+                    "id": "65f1a2b3c4d5e6f7a8b9c001",
+                    "entityId": "ent-001",
+                    "availability": "AVAILABLE"
+                  },
+                  "message": "Resource found"
+                }
+                """;
+        ExchangeFunction exchangeFunction = request -> Mono.just(ClientResponse.create(HttpStatus.OK)
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .body(wrappedJson)
+                .build());
+        ResourceClientAdapter adapter = new ResourceClientAdapter(
+                WebClient.builder().exchangeFunction(exchangeFunction), "http://localhost:9004");
+
+        StepVerifier.create(adapter.validateResourceBelongsToEntity(
+                        "65f1a2b3c4d5e6f7a8b9c001", "ent-001", "jwt-token"))
+                .verifyComplete();
+
+        StepVerifier.create(adapter.validateResourceBelongsToEntity(
+                        "65f1a2b3c4d5e6f7a8b9c001", "ent-999", "jwt-token"))
+                .expectError(DomainException.class)
+                .verify();
     }
 
     @Test

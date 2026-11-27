@@ -46,4 +46,7 @@ public class OperationalResourceDTO {
     @JsonProperty("entityId")
     @JsonAlias({"responsibleEntityId", "entidadId"})
     private String entityId;
+
+    @JsonProperty("data")
+    private OperationalResourceDTO data;
 }
