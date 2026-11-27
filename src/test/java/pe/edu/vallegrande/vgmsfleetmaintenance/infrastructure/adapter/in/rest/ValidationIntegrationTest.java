@@ -144,4 +144,63 @@ class ValidationIntegrationTest {
                 .expectBody()
                 .jsonPath("$.errors").exists();
     }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR_ENTIDAD")
+    @DisplayName("Should return 422 when estimatedCost exceeds scale of 2 decimals or business maximum")
+    void shouldReturn422WhenEstimatedCostViolatesPrecisionOrMaximum() {
+        String excessiveScalePayload = """
+            {
+                "workshopName": "Central Workshop",
+                "estimatedCost": 1500.125
+            }
+        """;
+
+        webTestClient.patch()
+                .uri("/api/v1/maintenance-orders/order-001/assign-workshop")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(excessiveScalePayload)
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY)
+                .expectBody()
+                .jsonPath("$.errors").exists();
+
+        String excessiveMaxPayload = """
+            {
+                "workshopName": "Central Workshop",
+                "estimatedCost": 100000000.00
+            }
+        """;
+
+        webTestClient.patch()
+                .uri("/api/v1/maintenance-orders/order-001/assign-workshop")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(excessiveMaxPayload)
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY)
+                .expectBody()
+                .jsonPath("$.errors").exists();
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR_ENTIDAD")
+    @DisplayName("Should return 422 when finalCost exceeds scale of 2 decimals or business maximum")
+    void shouldReturn422WhenFinalCostViolatesPrecisionOrMaximum() {
+        String invalidDischargePayload = """
+            {
+                "technicalVerdict": "Approved after road test",
+                "exitMileage": 50000,
+                "finalCost": 950.999
+            }
+        """;
+
+        webTestClient.post()
+                .uri("/api/v1/maintenance-orders/order-001/technical-discharge")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(invalidDischargePayload)
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY)
+                .expectBody()
+                .jsonPath("$.errors").exists();
+    }
 }

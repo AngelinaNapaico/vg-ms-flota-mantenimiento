@@ -7,5 +7,6 @@ package pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.clien
 public record AuthUserDTO(
         String username,
         String entityId,
-        boolean globalAccess) {
+        boolean globalAccess,
+        boolean entityWideAccess) {
 }

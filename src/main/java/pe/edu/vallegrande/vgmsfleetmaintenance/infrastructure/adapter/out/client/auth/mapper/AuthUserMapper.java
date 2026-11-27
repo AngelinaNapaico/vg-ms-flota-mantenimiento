@@ -19,13 +19,20 @@ public final class AuthUserMapper {
     private static final String ANONYMOUS_USER = "ANONYMOUS";
     private static final String ROLE_PREFIX = "ROLE_";
     private static final String SUPER_ADMIN_ROLE = "SUPER_ADMIN";
+    private static final Set<String> ENTITY_WIDE_ROLES = Set.of(
+            "SUPER_ADMIN",
+            "ADMIN",
+            "ENTIDAD_ADMIN",
+            "MUNICIPALIDAD_ADMIN",
+            "ANALISTA",
+            "ANALISTA_ENTIDAD");
 
     private AuthUserMapper() {
     }
 
     public static AuthUserDTO fromAuthentication(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            return new AuthUserDTO(ANONYMOUS_USER, null, false);
+            return new AuthUserDTO(ANONYMOUS_USER, null, false, false);
         }
 
         Map<String, Object> claims = extractClaims(authentication);
@@ -33,8 +40,10 @@ public final class AuthUserMapper {
         String entityId = normalizeClaim(claims.get("eid"));
         Set<String> normalizedRoles = extractNormalizedRoles(authentication);
         boolean globalAccess = normalizedRoles.contains(SUPER_ADMIN_ROLE);
+        boolean entityWideAccess = globalAccess
+                || normalizedRoles.stream().anyMatch(ENTITY_WIDE_ROLES::contains);
 
-        return new AuthUserDTO(username, entityId, globalAccess);
+        return new AuthUserDTO(username, entityId, globalAccess, entityWideAccess);
     }
 
     private static Map<String, Object> extractClaims(Authentication authentication) {

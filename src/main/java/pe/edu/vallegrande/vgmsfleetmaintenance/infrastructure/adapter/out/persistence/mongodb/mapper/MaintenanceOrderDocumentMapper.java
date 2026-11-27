@@ -164,8 +164,8 @@ public final class MaintenanceOrderDocumentMapper {
                 .mechanicInCharge(domain.getMechanicInCharge())
                 .contactPhone(domain.getContactPhone())
                 .workshopAddress(domain.getWorkshopAddress())
-                .estimatedCost(domain.getEstimatedCost())
-                .finalCost(domain.getFinalCost())
+                .estimatedCost(WorkshopDetail.normalizeCost(domain.getEstimatedCost(), "Estimated cost"))
+                .finalCost(WorkshopDetail.normalizeCost(domain.getFinalCost(), "Final cost"))
                 .estimatedDeliveryDate(domain.getEstimatedDeliveryDate())
                 .initialDiagnosis(domain.getInitialDiagnosis())
                 .build();

@@ -3,6 +3,9 @@ package pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.d
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -44,7 +47,9 @@ public class TechnicalDischargeRequest {
     @Schema(description = "Odómetro con el que la unidad abandona el taller", example = "85415")
     private Integer exitMileage;
 
-    @PositiveOrZero(message = "El costo final no puede ser negativo")
+    @DecimalMin(value = "0.00", inclusive = true, message = "El costo final no puede ser negativo")
+    @DecimalMax(value = "99999999.99", inclusive = true, message = "El costo final no puede exceder 99999999.99")
+    @Digits(integer = 8, fraction = 2, message = "El costo final debe tener hasta 8 dígitos enteros y máximo 2 decimales")
     @JsonProperty("finalCost")
     @JsonAlias({"costoFinal", "finalCost"})
     @Schema(description = "Costo final total facturado por la reparación", example = "920.00")

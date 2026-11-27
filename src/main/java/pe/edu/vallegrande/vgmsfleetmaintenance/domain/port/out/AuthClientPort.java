@@ -13,4 +13,6 @@ public interface AuthClientPort {
     Mono<String> getCurrentEntityId();
 
     Mono<Boolean> hasGlobalAccess();
+
+    Mono<Boolean> hasEntityWideAccess();
 }

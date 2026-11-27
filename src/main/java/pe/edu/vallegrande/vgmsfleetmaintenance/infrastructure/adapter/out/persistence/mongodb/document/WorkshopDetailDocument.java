@@ -5,13 +5,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
  * Embedded MongoDB document for workshop detail.
- * Conforms to DatabaseStorage standard: English camelCase BSON fields and isolated persistence models.
+ * Stores monetary amounts using exact BSON Decimal128 representation.
  */
 @Data
 @Builder
@@ -34,10 +35,10 @@ public class WorkshopDetailDocument {
     @Field("workshopAddress")
     private String workshopAddress;
 
-    @Field("estimatedCost")
+    @Field(value = "estimatedCost", targetType = FieldType.DECIMAL128)
     private BigDecimal estimatedCost;
 
-    @Field("finalCost")
+    @Field(value = "finalCost", targetType = FieldType.DECIMAL128)
     private BigDecimal finalCost;
 
     @Field("estimatedDeliveryDate")

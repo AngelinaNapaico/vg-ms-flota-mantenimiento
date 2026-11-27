@@ -54,6 +54,7 @@ class MaintenanceOrderServiceTest {
                 lenient().when(authClientPort.getCurrentUsername()).thenReturn(Mono.just("test-user"));
                 lenient().when(authClientPort.getCurrentEntityId()).thenReturn(Mono.just("ent-policia"));
                 lenient().when(authClientPort.hasGlobalAccess()).thenReturn(Mono.just(false));
+                lenient().when(authClientPort.hasEntityWideAccess()).thenReturn(Mono.just(false));
                 lenient().when(resourceClientPort.validateResourceBelongsToEntity(any(), any(), any()))
                                 .thenReturn(Mono.empty());
                 lenient().when(resourceClientPort.validateResourceBelongsToEntity(any(), any()))
@@ -66,7 +67,7 @@ class MaintenanceOrderServiceTest {
                                 "rec-001",
                                 "POL-100",
                                 "ent-policia",
-                                "12345678",
+                                "test-user",
                                 null,
                                 MaintenanceType.CORRECTIVE_ACCIDENT,
                                 OrderPriority.HIGH,
@@ -115,7 +116,7 @@ class MaintenanceOrderServiceTest {
                                 "rec-001",
                                 "POL-100",
                                 "ent-policia",
-                                "12345678",
+                                "test-user",
                                 null,
                                 MaintenanceType.CORRECTIVE,
                                 OrderPriority.HIGH,
@@ -287,7 +288,7 @@ class MaintenanceOrderServiceTest {
                                 "rec-009",
                                 "POL-900",
                                 "ent-policia",
-                                "12345678",
+                                "test-user",
                                 null,
                                 MaintenanceType.PREVENTIVE,
                                 OrderPriority.LOW,
@@ -414,7 +415,7 @@ class MaintenanceOrderServiceTest {
                                 "rec-055",
                                 "POL-550",
                                 "ent-policia",
-                                "12345678",
+                                "test-user",
                                 null,
                                 MaintenanceType.CORRECTIVE,
                                 OrderPriority.HIGH,
@@ -472,5 +473,89 @@ class MaintenanceOrderServiceTest {
                                         argThat(id -> id != null && !id.isBlank()),
                                         eq("NONE"));
                 }
+        }
+
+        @Test
+        @DisplayName("Should deny same-tenant cross-user read and mutation when individual operator does not own the order")
+        void shouldDenySameTenantCrossUserAccessForIndividualOperator() {
+                MaintenanceOrder otherUsersOrder = MaintenanceOrder.create(
+                                "ORD-2026-OTHER",
+                                "rec-777",
+                                "POL-777",
+                                "ent-policia",
+                                "another-operator",
+                                null,
+                                MaintenanceType.CORRECTIVE,
+                                OrderPriority.MEDIUM,
+                                "Alternator failure",
+                                28000,
+                                null);
+                otherUsersOrder.setId("order-other-user");
+
+                when(repositoryPort.findByIdAndEntityId("order-other-user", "ent-policia"))
+                                .thenReturn(Mono.just(otherUsersOrder));
+                when(repositoryPort.findByEntityId("ent-policia"))
+                                .thenReturn(Flux.just(newOrder, otherUsersOrder));
+
+                StepVerifier.create(useCase.findAll())
+                                .expectNextMatches(order -> "test-user".equals(order.getReportedByDni()))
+                                .verifyComplete();
+
+                StepVerifier.create(useCase.findById("order-other-user"))
+                                .expectErrorMatches(err -> err instanceof DomainException de && de.isNotFound())
+                                .verify();
+
+                MaintenanceOrder updateDetails = MaintenanceOrder.builder()
+                                .remarks("Unauthorized edit of colleague order")
+                                .build();
+
+                StepVerifier.create(useCase.update("order-other-user", updateDetails))
+                                .expectError(AccessDeniedException.class)
+                                .verify();
+
+                verify(repositoryPort, never()).save(any());
+                verify(auditLogRepositoryPort, times(1)).recordAudit(
+                                eq("UPDATE"),
+                                eq("order-other-user"),
+                                eq("RESOURCE_UNAVAILABLE"),
+                                eq("test-user"),
+                                eq("ent-policia"),
+                                eq("FAILED"),
+                                argThat(id -> id != null && !id.isBlank()),
+                                eq("AccessDeniedException"));
+        }
+
+        @Test
+        @DisplayName("Should allow entity-wide administrator to read and mutate same-entity orders owned by other users")
+        void shouldAllowEntityWideAdminToManageSameEntityOrders() {
+                when(authClientPort.hasEntityWideAccess()).thenReturn(Mono.just(true));
+
+                MaintenanceOrder otherUsersOrder = MaintenanceOrder.create(
+                                "ORD-2026-ADMIN",
+                                "rec-888",
+                                "POL-888",
+                                "ent-policia",
+                                "another-operator",
+                                null,
+                                MaintenanceType.PREVENTIVE,
+                                OrderPriority.LOW,
+                                "Scheduled check",
+                                15000,
+                                null);
+                otherUsersOrder.setId("order-entity-admin");
+
+                when(repositoryPort.findByIdAndEntityId("order-entity-admin", "ent-policia"))
+                                .thenReturn(Mono.just(otherUsersOrder));
+                when(repositoryPort.save(any(MaintenanceOrder.class)))
+                                .thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+
+                StepVerifier.create(useCase.findById("order-entity-admin"))
+                                .expectNextMatches(order -> "ORD-2026-ADMIN".equals(order.getOrderCode()))
+                                .verifyComplete();
+
+                StepVerifier.create(useCase.update("order-entity-admin",
+                                MaintenanceOrder.builder().remarks("Approved by entity admin").build()))
+                                .expectNextMatches(order -> "Approved by entity admin".equals(order.getRemarks()))
+                                .verifyComplete();
         }
 }

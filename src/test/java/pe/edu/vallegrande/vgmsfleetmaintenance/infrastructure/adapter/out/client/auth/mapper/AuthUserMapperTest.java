@@ -39,10 +39,11 @@ class AuthUserMapperTest {
         assertEquals("44556677", result.username());
         assertEquals("ent-001", result.entityId());
         assertFalse(result.globalAccess());
+        assertFalse(result.entityWideAccess());
     }
 
     @Test
-    @DisplayName("Should derive globalAccess true for SUPER_ADMIN role and fallback to preferred_username")
+    @DisplayName("Should derive globalAccess and entityWideAccess true for SUPER_ADMIN role")
     void shouldTransformSuperAdminJwtAuthentication() {
         Jwt jwt = Jwt.withTokenValue("mock-token")
                 .header("alg", "RS256")
@@ -61,6 +62,30 @@ class AuthUserMapperTest {
         assertEquals("super-admin", result.username());
         assertNull(result.entityId());
         assertTrue(result.globalAccess());
+        assertTrue(result.entityWideAccess());
+    }
+
+    @Test
+    @DisplayName("Should derive entityWideAccess true and globalAccess false for ENTIDAD_ADMIN role")
+    void shouldGrantEntityWideAccessToEntityAdmin() {
+        Jwt jwt = Jwt.withTokenValue("mock-token")
+                .header("alg", "RS256")
+                .subject("sub-entity-admin")
+                .claim("preferred_username", "entity-admin")
+                .claim("eid", "ent-002")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(300))
+                .build();
+
+        JwtAuthenticationToken auth = new JwtAuthenticationToken(
+                jwt, List.of(new SimpleGrantedAuthority("ROLE_ENTIDAD_ADMIN")));
+
+        AuthUserDTO result = AuthUserMapper.fromAuthentication(auth);
+
+        assertEquals("entity-admin", result.username());
+        assertEquals("ent-002", result.entityId());
+        assertFalse(result.globalAccess());
+        assertTrue(result.entityWideAccess());
     }
 
     @Test
@@ -71,5 +96,6 @@ class AuthUserMapperTest {
         assertEquals("ANONYMOUS", result.username());
         assertNull(result.entityId());
         assertFalse(result.globalAccess());
+        assertFalse(result.entityWideAccess());
     }
 }

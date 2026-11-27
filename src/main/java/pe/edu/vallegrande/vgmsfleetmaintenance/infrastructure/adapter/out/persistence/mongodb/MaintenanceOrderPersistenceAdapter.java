@@ -243,10 +243,10 @@ public class MaintenanceOrderPersistenceAdapter implements MaintenanceOrderRepos
     }
 
     private boolean canRead(TenantScope scope, MaintenanceOrderDocument doc) {
-        return scope.canRead(doc.getEntityId());
+        return scope.canAccessOrder(doc.getEntityId(), doc.getReportedByDni());
     }
 
     private boolean canWrite(TenantScope scope, MaintenanceOrderDocument doc) {
-        return scope.canWrite() && canRead(scope, doc);
+        return scope.canWrite() && scope.canAccessOrder(doc.getEntityId(), doc.getReportedByDni());
     }
 }

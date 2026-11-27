@@ -88,6 +88,9 @@ public class MaintenanceOrder {
         if (this.orderStatus == OrderStatus.COMPLETED || this.orderStatus == OrderStatus.CANCELLED) {
             throw new DomainException("No es posible asignar taller a una orden de mantenimiento cerrada");
         }
+        if (detail != null) {
+            detail.normalizeMonetaryAmounts();
+        }
         this.workshopDetail = detail;
         this.orderStatus = OrderStatus.IN_DIAGNOSIS;
         this.updatedAt = LocalDateTime.now();
@@ -170,6 +173,7 @@ public class MaintenanceOrder {
         // En etapas de taller/diagnóstico o posteriores, se actualizan los datos de
         // taller
         if (workshopDetail != null) {
+            workshopDetail.normalizeMonetaryAmounts();
             if (this.workshopDetail == null) {
                 this.workshopDetail = workshopDetail;
             } else {
@@ -190,6 +194,9 @@ public class MaintenanceOrder {
                 }
                 if (workshopDetail.getEstimatedCost() != null) {
                     this.workshopDetail.setEstimatedCost(workshopDetail.getEstimatedCost());
+                }
+                if (workshopDetail.getFinalCost() != null) {
+                    this.workshopDetail.setFinalCost(workshopDetail.getFinalCost());
                 }
                 if (workshopDetail.getEstimatedDeliveryDate() != null) {
                     this.workshopDetail.setEstimatedDeliveryDate(workshopDetail.getEstimatedDeliveryDate());

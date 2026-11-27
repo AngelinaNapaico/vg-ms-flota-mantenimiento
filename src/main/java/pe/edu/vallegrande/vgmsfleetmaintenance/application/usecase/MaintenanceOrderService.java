@@ -60,7 +60,8 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                                         }
                                         return authClientPort.getCurrentEntityId()
                                                         .filter(entityId -> !entityId.isBlank())
-                                                        .flatMapMany(repositoryPort::findByEntityId);
+                                                        .flatMapMany(repositoryPort::findByEntityId)
+                                                        .transform(this::filterAccessibleOrdersForCurrentUser);
                                 });
         }
 
@@ -75,7 +76,8 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                                         return authClientPort.getCurrentEntityId()
                                                         .filter(entityId -> !entityId.isBlank())
                                                         .flatMap(entityId -> repositoryPort.findByIdAndEntityId(id,
-                                                                        entityId));
+                                                                        entityId))
+                                                        .flatMap(this::verifyReadOwnershipForCurrentUser);
                                 })
                                 .switchIfEmpty(Mono.error(
                                                 DomainException.notFound("Requested maintenance order was not found")));
@@ -92,7 +94,8 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                                         return authClientPort.getCurrentEntityId()
                                                         .filter(entityId -> !entityId.isBlank())
                                                         .flatMap(entityId -> repositoryPort
-                                                                        .findByOrderCodeAndEntityId(code, entityId));
+                                                                        .findByOrderCodeAndEntityId(code, entityId))
+                                                        .flatMap(this::verifyReadOwnershipForCurrentUser);
                                 })
                                 .switchIfEmpty(Mono.error(
                                                 DomainException.notFound("Requested maintenance order was not found")));
@@ -110,7 +113,8 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                                                         .filter(entityId -> !entityId.isBlank())
                                                         .flatMapMany(entityId -> repositoryPort
                                                                         .findByResourceIdAndEntityId(resourceId,
-                                                                                        entityId));
+                                                                                        entityId))
+                                                        .transform(this::filterAccessibleOrdersForCurrentUser);
                                 });
         }
 
@@ -125,7 +129,8 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                                         return authClientPort.getCurrentEntityId()
                                                         .filter(callerEntityId -> !callerEntityId.isBlank()
                                                                         && callerEntityId.equals(entityId))
-                                                        .flatMapMany(repositoryPort::findByEntityId);
+                                                        .flatMapMany(repositoryPort::findByEntityId)
+                                                        .transform(this::filterAccessibleOrdersForCurrentUser);
                                 });
         }
 
@@ -141,7 +146,8 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                                                         .filter(entityId -> !entityId.isBlank())
                                                         .flatMapMany(entityId -> repositoryPort
                                                                         .findByEntityIdAndOrderStatus(entityId,
-                                                                                        status.name()));
+                                                                                        status.name()))
+                                                        .transform(this::filterAccessibleOrdersForCurrentUser);
                                 });
         }
 
@@ -187,12 +193,12 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                                                                                 .substring(0, 6).toUpperCase();
                                                                 String orderCode = "ORD-" + year + "-" + suffix;
 
-                                order.setOrderCode(orderCode);
-                                order.setOrderStatus(OrderStatus.REGISTERED);
-                                order.setStatus("A");
-                                order.setActive(true);
-                                order.setCreatedAt(LocalDateTime.now());
-                                order.setUpdatedAt(LocalDateTime.now());
+                                                                order.setOrderCode(orderCode);
+                                                                order.setOrderStatus(OrderStatus.REGISTERED);
+                                                                order.setStatus("A");
+                                                                order.setActive(true);
+                                                                order.setCreatedAt(LocalDateTime.now());
+                                                                order.setUpdatedAt(LocalDateTime.now());
 
                                                                 Mono<Void> notifyResource = (token != null
                                                                                 && !token.isBlank())
@@ -461,9 +467,62 @@ public class MaintenanceOrderService implements MaintenanceOrderUseCase {
                                                                                 .findByIdAndEntityId(id, callerEntityId)
                                                                                 .switchIfEmpty(Mono.error(
                                                                                                 DomainException.notFound(
-                                                                                                                "Requested maintenance order was not found")));
+                                                                                                                "Requested maintenance order was not found")))
+                                                                                .flatMap(this::verifyMutationOwnershipForCurrentUser);
                                                         });
                                 });
+        }
+
+        private Flux<MaintenanceOrder> filterAccessibleOrdersForCurrentUser(Flux<MaintenanceOrder> orders) {
+                return authClientPort.hasEntityWideAccess()
+                                .defaultIfEmpty(false)
+                                .flatMapMany(hasEntityWide -> {
+                                        if (Boolean.TRUE.equals(hasEntityWide)) {
+                                                return orders;
+                                        }
+                                        return resolveCurrentActor()
+                                                        .flatMapMany(actor -> orders
+                                                                        .filter(order -> isOwnedByActor(order, actor)));
+                                });
+        }
+
+        private Mono<MaintenanceOrder> verifyReadOwnershipForCurrentUser(MaintenanceOrder order) {
+                return authClientPort.hasEntityWideAccess()
+                                .defaultIfEmpty(false)
+                                .flatMap(hasEntityWide -> {
+                                        if (Boolean.TRUE.equals(hasEntityWide)) {
+                                                return Mono.just(order);
+                                        }
+                                        return resolveCurrentActor()
+                                                        .filter(actor -> isOwnedByActor(order, actor))
+                                                        .map(actor -> order);
+                                });
+        }
+
+        private Mono<MaintenanceOrder> verifyMutationOwnershipForCurrentUser(MaintenanceOrder order) {
+                return authClientPort.hasEntityWideAccess()
+                                .defaultIfEmpty(false)
+                                .flatMap(hasEntityWide -> {
+                                        if (Boolean.TRUE.equals(hasEntityWide)) {
+                                                return Mono.just(order);
+                                        }
+                                        return resolveCurrentActor()
+                                                        .flatMap(actor -> {
+                                                                if (isOwnedByActor(order, actor)) {
+                                                                        return Mono.just(order);
+                                                                }
+                                                                return Mono.error(new AccessDeniedException(
+                                                                                "Access denied: maintenance order is not assigned to the authenticated user"));
+                                                        });
+                                });
+        }
+
+        private boolean isOwnedByActor(MaintenanceOrder order, String actor) {
+                if (order == null || actor == null || actor.isBlank() || "ANONYMOUS".equals(actor)) {
+                        return false;
+                }
+                String owner = order.getReportedByDni();
+                return owner != null && actor.equals(owner.trim());
         }
 
         private Mono<String> requireAuthenticatedEntityId() {

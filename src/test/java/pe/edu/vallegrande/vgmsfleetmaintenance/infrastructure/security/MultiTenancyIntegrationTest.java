@@ -55,9 +55,11 @@ class MultiTenancyIntegrationTest {
     private static final String ENTITY_A = "65f1a2b3c4d5e6f7a8b9c001";
     private static final String ENTITY_B = "65f1a2b3c4d5e6f7a8b9c002";
     private static final String ORDER_A_ID = "order-ent-a-001";
+    private static final String ORDER_A_OTHER_USER_ID = "order-ent-a-003";
     private static final String ORDER_B_ID = "order-ent-b-002";
 
     private MaintenanceOrderDocument docA;
+    private MaintenanceOrderDocument docAOtherUser;
     private MaintenanceOrderDocument docB;
 
     @BeforeEach
@@ -68,8 +70,24 @@ class MultiTenancyIntegrationTest {
                 .resourceId("REC-001")
                 .resourcePlate("EGA-101")
                 .entityId(ENTITY_A)
+                .reportedByDni("operator-a")
                 .orderStatus("REGISTERED")
                 .failureReason("Brake inspection")
+                .status("A")
+                .active(true)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        docAOtherUser = MaintenanceOrderDocument.builder()
+                .id(ORDER_A_OTHER_USER_ID)
+                .orderCode("ORD-2026-AAACCC")
+                .resourceId("REC-003")
+                .resourcePlate("EGA-103")
+                .entityId(ENTITY_A)
+                .reportedByDni("operator-a-colleague")
+                .orderStatus("REGISTERED")
+                .failureReason("Battery replacement")
                 .status("A")
                 .active(true)
                 .createdAt(LocalDateTime.now())
@@ -82,6 +100,7 @@ class MultiTenancyIntegrationTest {
                 .resourceId("REC-002")
                 .resourcePlate("EGA-202")
                 .entityId(ENTITY_B)
+                .reportedByDni("operator-b")
                 .orderStatus("REGISTERED")
                 .failureReason("Oil change")
                 .status("A")
@@ -91,10 +110,12 @@ class MultiTenancyIntegrationTest {
                 .build();
 
         when(repository.findById(eq(ORDER_A_ID))).thenReturn(Mono.just(docA));
+        when(repository.findById(eq(ORDER_A_OTHER_USER_ID))).thenReturn(Mono.just(docAOtherUser));
         when(repository.findById(eq(ORDER_B_ID))).thenReturn(Mono.just(docB));
         when(repository.findByIdAndEntityId(eq(ORDER_A_ID), eq(ENTITY_A))).thenReturn(Mono.just(docA));
+        when(repository.findByIdAndEntityId(eq(ORDER_A_OTHER_USER_ID), eq(ENTITY_A))).thenReturn(Mono.just(docAOtherUser));
         when(repository.findByIdAndEntityId(eq(ORDER_B_ID), eq(ENTITY_A))).thenReturn(Mono.empty());
-        when(repository.findByEntityId(eq(ENTITY_A))).thenReturn(Flux.just(docA));
+        when(repository.findByEntityId(eq(ENTITY_A))).thenReturn(Flux.just(docA, docAOtherUser));
         when(repository.findByEntityId(eq(ENTITY_B))).thenReturn(Flux.just(docB));
         when(repository.findAll()).thenReturn(Flux.just(docA, docB));
         when(auditLogRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
@@ -267,5 +288,51 @@ class MultiTenancyIntegrationTest {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.length()").isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Should prevent same-tenant operator from reading or mutating another user's order while allowing entity admin")
+    void shouldEnforceIndividualOrderOwnershipWithinSameTenant() {
+        WebTestClient operatorAClient = webTestClient.mutateWith(mockJwt()
+                .authorities(new SimpleGrantedAuthority("ROLE_OPERADOR_ENTIDAD"))
+                .jwt(jwt -> jwt
+                        .subject("operator-a")
+                        .claim("preferred_username", "operator-a")
+                        .claim("eid", ENTITY_A)
+                        .claim("roles", List.of("OPERADOR_ENTIDAD"))));
+
+        operatorAClient.get()
+                .uri("/api/v1/maintenance-orders/" + ORDER_A_OTHER_USER_ID)
+                .exchange()
+                .expectStatus().isNotFound();
+
+        operatorAClient.put()
+                .uri("/api/v1/maintenance-orders/" + ORDER_A_OTHER_USER_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"remarks\": \"Cross-user tampering attempt\"}")
+                .exchange()
+                .expectStatus().isNotFound();
+
+        WebTestClient entityAdminAClient = webTestClient.mutateWith(mockJwt()
+                .authorities(new SimpleGrantedAuthority("ROLE_ENTIDAD_ADMIN"))
+                .jwt(jwt -> jwt
+                        .subject("entity-admin-a")
+                        .claim("preferred_username", "entity-admin-a")
+                        .claim("eid", ENTITY_A)
+                        .claim("roles", List.of("ENTIDAD_ADMIN"))));
+
+        entityAdminAClient.get()
+                .uri("/api/v1/maintenance-orders")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(2);
+
+        entityAdminAClient.get()
+                .uri("/api/v1/maintenance-orders/" + ORDER_A_OTHER_USER_ID)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.orderCode").isEqualTo("ORD-2026-AAACCC");
     }
 }

@@ -26,6 +26,14 @@ import java.util.stream.Collectors;
  */
 public record TenantScope(boolean all, String municipalityId, String entityId, String actor, Set<String> roles) {
 
+    private static final Set<String> ENTITY_WIDE_ROLES = Set.of(
+            "SUPER_ADMIN",
+            "ADMIN",
+            "ENTIDAD_ADMIN",
+            "MUNICIPALIDAD_ADMIN",
+            "ANALISTA",
+            "ANALISTA_ENTIDAD");
+
     public TenantScope(boolean all, String municipalityId, String entityId, Set<String> roles) {
         this(all, municipalityId, entityId, "ANONYMOUS", roles);
     }
@@ -49,7 +57,10 @@ public record TenantScope(boolean all, String municipalityId, String entityId, S
         Map<String, Object> claims = auth instanceof JwtAuthenticationToken jwt ? jwt.getTokenAttributes() : Map.of();
         boolean isGlobalAdmin = roles.contains("SUPER_ADMIN");
 
-        String actor = text(claims.get("preferred_username"));
+        String actor = text(claims.get("dni"));
+        if (actor == null) {
+            actor = text(claims.get("preferred_username"));
+        }
         if (actor == null) {
             actor = text(claims.get("sub"));
         }
@@ -67,6 +78,10 @@ public record TenantScope(boolean all, String municipalityId, String entityId, S
         return roles.contains(role);
     }
 
+    public boolean hasEntityWideAccess() {
+        return all || roles.stream().anyMatch(ENTITY_WIDE_ROLES::contains);
+    }
+
     /**
      * Read access for maintenance order belonging to {@code eid}.
      * Restricted strictly to documents matching the caller's entityId,
@@ -77,6 +92,24 @@ public record TenantScope(boolean all, String municipalityId, String entityId, S
             return entityId.equals(eid);
         }
         return all;
+    }
+
+    /**
+     * Resource-level ownership check combining tenant isolation with individual
+     * user-to-order ownership for non-administrative operational and citizen roles.
+     */
+    public boolean canAccessOrder(String orderEntityId, String orderOwnerActor) {
+        if (!canRead(orderEntityId)) {
+            return false;
+        }
+        if (hasEntityWideAccess()) {
+            return true;
+        }
+        return actor != null
+                && !actor.isBlank()
+                && !"ANONYMOUS".equals(actor)
+                && orderOwnerActor != null
+                && actor.equals(orderOwnerActor.trim());
     }
 
     /**

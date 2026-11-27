@@ -3,7 +3,9 @@ package pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.in.rest.d
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -57,7 +59,9 @@ public class AssignWorkshopRequest {
     @Schema(description = "Dirección física del taller", example = "Av. Libertadores 1045, San Vicente")
     private String workshopAddress;
 
-    @DecimalMin(value = "0.0", inclusive = true, message = "El costo estimado no puede ser negativo")
+    @DecimalMin(value = "0.00", inclusive = true, message = "El costo estimado no puede ser negativo")
+    @DecimalMax(value = "99999999.99", inclusive = true, message = "El costo estimado no puede exceder 99999999.99")
+    @Digits(integer = 8, fraction = 2, message = "El costo estimado debe tener hasta 8 dígitos enteros y máximo 2 decimales")
     @JsonProperty("estimatedCost")
     @JsonAlias({"costoEstimado", "estimatedCost"})
     @Schema(description = "Presupuesto cotizado inicial (S/.)", example = "1500.00")

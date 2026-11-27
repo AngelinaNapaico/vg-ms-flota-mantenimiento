@@ -213,4 +213,38 @@ class MaintenanceOrderTest {
                 assertEquals(OrderPriority.MEDIUM, order.getPriority()); // Priority remains locked!
                 assertEquals("Ajuste", order.getRemarks());
         }
+
+        @Test
+        @DisplayName("Should normalize workshop monetary precision to 2 decimals and reject out-of-range values")
+        void shouldEnforceWorkshopMonetaryPrecisionAndBounds() {
+                MaintenanceOrder order = MaintenanceOrder.create(
+                                "ORD-2026-COST",
+                                "rec-01",
+                                "XYZ-123",
+                                "ent-01",
+                                "12345678",
+                                null,
+                                MaintenanceType.CORRECTIVE,
+                                OrderPriority.MEDIUM,
+                                "Suspension repair",
+                                500,
+                                null);
+
+                WorkshopDetail validWorkshop = WorkshopDetail.builder()
+                                .workshopName("Central Workshop")
+                                .estimatedCost(new BigDecimal("1250"))
+                                .finalCost(new BigDecimal("1275.5"))
+                                .build();
+                order.assignWorkshop(validWorkshop);
+
+                assertEquals(new BigDecimal("1250.00"), order.getWorkshopDetail().getEstimatedCost());
+                assertEquals(new BigDecimal("1275.50"), order.getWorkshopDetail().getFinalCost());
+
+                assertThrows(DomainException.class,
+                                () -> WorkshopDetail.normalizeCost(new BigDecimal("10.123"), "Estimated cost"));
+                assertThrows(DomainException.class,
+                                () -> WorkshopDetail.normalizeCost(new BigDecimal("100000000.00"), "Estimated cost"));
+                assertThrows(DomainException.class,
+                                () -> WorkshopDetail.normalizeCost(new BigDecimal("-1.00"), "Final cost"));
+        }
 }

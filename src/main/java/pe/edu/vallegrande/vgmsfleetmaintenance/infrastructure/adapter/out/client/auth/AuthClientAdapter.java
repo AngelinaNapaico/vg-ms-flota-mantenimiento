@@ -35,6 +35,13 @@ public class AuthClientAdapter implements AuthClientPort {
                 .defaultIfEmpty(false);
     }
 
+    @Override
+    public Mono<Boolean> hasEntityWideAccess() {
+        return resolveAuthenticatedUser()
+                .map(AuthUserDTO::entityWideAccess)
+                .defaultIfEmpty(false);
+    }
+
     private Mono<AuthUserDTO> resolveAuthenticatedUser() {
         return ReactiveSecurityContextHolder.getContext()
                 .map(SecurityContext::getAuthentication)
