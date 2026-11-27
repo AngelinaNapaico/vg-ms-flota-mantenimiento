@@ -17,9 +17,10 @@ services:
 
   vg-ms-fleetmaintenance:
     build: .
-    image: carlosguerrero11/vg-ms-fleet-maintenance:1.0
+    image: valencia123/vg-ms-flota-mantenimiento:5.7
     container_name: vg-ms-fleetmaintenance
     environment:
+      JAVA_TOOL_OPTIONS: "-Dreactor.netty.ioWorkerCount=4 -Dreactor.netty.ioSelectCount=1 -Xms64m -Xmx128m -Xss256k -XX:MaxMetaspaceSize=150m -XX:ReservedCodeCacheSize=32m -XX:TieredStopAtLevel=1 -XX:MaxDirectMemorySize=64m -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError"
       SERVER_PORT: 9012
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       SPRING_DATA_MONGODB_URI: ${SPRING_DATA_MONGODB_URI}
@@ -33,7 +34,9 @@ services:
     # El trafico externo se rutea exclusivamente a traves de vg-ms-api-gateway.
     expose:
       - "9012"
-    mem_limit: 300m
+    mem_limit: 250m
+    memswap_limit: 250m
+    cpus: 0.5
     restart: unless-stopped
     networks:
       - vg-network

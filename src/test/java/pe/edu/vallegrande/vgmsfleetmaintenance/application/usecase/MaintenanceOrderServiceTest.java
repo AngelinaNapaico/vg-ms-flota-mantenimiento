@@ -54,9 +54,12 @@ class MaintenanceOrderServiceTest {
                 lenient().when(authClientPort.getCurrentUsername()).thenReturn(Mono.just("test-user"));
                 lenient().when(authClientPort.getCurrentEntityId()).thenReturn(Mono.just("ent-policia"));
                 lenient().when(authClientPort.hasGlobalAccess()).thenReturn(Mono.just(false));
-                lenient().when(resourceClientPort.validateResourceBelongsToEntity(any(), any(), any())).thenReturn(Mono.empty());
-                lenient().when(resourceClientPort.validateResourceBelongsToEntity(any(), any())).thenReturn(Mono.empty());
-                lenient().when(auditLogRepositoryPort.recordAudit(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(Mono.empty());
+                lenient().when(resourceClientPort.validateResourceBelongsToEntity(any(), any(), any()))
+                                .thenReturn(Mono.empty());
+                lenient().when(resourceClientPort.validateResourceBelongsToEntity(any(), any()))
+                                .thenReturn(Mono.empty());
+                lenient().when(auditLogRepositoryPort.recordAudit(any(), any(), any(), any(), any(), any(), any(),
+                                any())).thenReturn(Mono.empty());
 
                 newOrder = MaintenanceOrder.create(
                                 null,
@@ -194,10 +197,51 @@ class MaintenanceOrderServiceTest {
                                 anyString(),
                                 eq("rec-001"),
                                 eq("test-user"),
-                                eq("GLOBAL"),
+                                eq("ent-policia"),
                                 eq("FAILED"),
                                 argThat(id -> id != null && !id.isBlank()),
                                 eq("AccessDeniedException"));
+        }
+
+        @Test
+        @DisplayName("Should reject mutation when non-global operator lacks tenant claim without using fixed tenant fallback")
+        void shouldRejectMutationWhenCallerLacksTenantClaim() {
+                when(authClientPort.getCurrentEntityId()).thenReturn(Mono.empty());
+
+                MaintenanceOrder updateDetails = MaintenanceOrder.builder()
+                                .failureReason("Attempt without tenant claim")
+                                .build();
+
+                StepVerifier.create(useCase.update("order-001", updateDetails))
+                                .expectError(AccessDeniedException.class)
+                                .verify();
+
+                verify(repositoryPort, never()).findById(anyString());
+                verify(repositoryPort, never()).findByIdAndEntityId(anyString(), anyString());
+                verify(auditLogRepositoryPort, times(1)).recordAudit(
+                                eq("UPDATE"),
+                                eq("order-001"),
+                                eq("order-001"),
+                                eq("test-user"),
+                                eq("N/A"),
+                                eq("FAILED"),
+                                argThat(id -> id != null && !id.isBlank()),
+                                eq("AccessDeniedException"));
+        }
+
+        @Test
+        @DisplayName("Should propagate error instead of suppressing when failure audit persistence fails")
+        void shouldPropagateErrorWhenFailureAuditPersistenceFails() {
+                when(repositoryPort.findByIdAndEntityId("missing-id", "ent-policia"))
+                                .thenReturn(Mono.empty());
+                when(auditLogRepositoryPort.recordAudit(
+                                eq("START_REPAIR"), any(), any(), any(), any(), eq("FAILED"), any(), any()))
+                                .thenReturn(Mono.error(new RuntimeException("Audit store down during failure logging")));
+
+                StepVerifier.create(useCase.startRepair("missing-id"))
+                                .expectErrorMatches(err -> err instanceof DomainException
+                                                && "Failed to persist durable audit log for operation".equals(err.getMessage()))
+                                .verify();
         }
 
         @Test
@@ -413,7 +457,8 @@ class MaintenanceOrderServiceTest {
                                 .expectNextMatches(o -> o.getOrderStatus() == OrderStatus.CANCELLED)
                                 .verifyComplete();
 
-                for (String action : new String[] { "UPDATE", "ASSIGN_WORKSHOP", "START_REPAIR", "QUALITY_CONTROL", "CANCEL" }) {
+                for (String action : new String[] { "UPDATE", "ASSIGN_WORKSHOP", "START_REPAIR", "QUALITY_CONTROL",
+                                "CANCEL" }) {
                         verify(auditLogRepositoryPort, times(1)).recordAudit(
                                         eq(action),
                                         eq("ORD-2026-LIFE"),

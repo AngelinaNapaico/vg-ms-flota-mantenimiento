@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockJwt;
@@ -96,6 +97,7 @@ class MultiTenancyIntegrationTest {
         when(repository.findByEntityId(eq(ENTITY_A))).thenReturn(Flux.just(docA));
         when(repository.findByEntityId(eq(ENTITY_B))).thenReturn(Flux.just(docB));
         when(repository.findAll()).thenReturn(Flux.just(docA, docB));
+        when(auditLogRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
     }
 
     @Test

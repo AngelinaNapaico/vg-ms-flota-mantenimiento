@@ -9,6 +9,7 @@ import pe.edu.vallegrande.vgmsfleetmaintenance.infrastructure.adapter.out.persis
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.Objects;
 
 /**
  * Persistence adapter providing durable storage of audit events in MongoDB.
@@ -21,9 +22,15 @@ public class AuditLogPersistenceAdapter implements AuditLogRepositoryPort {
     private final AuditLogRepository repository;
 
     @Override
-    public Mono<Void> recordAudit(String action, String orderCode, String resourceId,
-            String actor, String tenant, String result,
-            String correlationId, String errorDetails) {
+    public Mono<Void> recordAudit(
+            String action,
+            String orderCode,
+            String resourceId,
+            String actor,
+            String tenant,
+            String result,
+            String correlationId,
+            String errorDetails) {
         AuditLogDocument doc = AuditLogDocument.builder()
                 .timestamp(Instant.now())
                 .action(action)
@@ -36,12 +43,12 @@ public class AuditLogPersistenceAdapter implements AuditLogRepositoryPort {
                 .errorDetails(errorDetails)
                 .build();
 
-        var saveMono = repository.save(doc);
-        if (saveMono == null) {
-            return Mono.empty();
-        }
-        return saveMono
-                .doOnError(err -> log.warn("Failed to persist durable audit log: {}", err.getClass().getSimpleName()))
+        return Mono.defer(() -> Objects.requireNonNull(
+                        repository.save(doc),
+                        "Audit repository returned null publisher"))
+                .retry(1)
+                .doOnError(err -> log.error("Failed to persist durable audit log [type={}]",
+                        err.getClass().getSimpleName()))
                 .then();
     }
 }

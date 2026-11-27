@@ -78,6 +78,7 @@ class IdempotencyIntegrationTest {
                     persistedOrders.add(doc);
                     return Mono.just(doc);
                 });
+        when(auditLogRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
     }
 
     @Test
